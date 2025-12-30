@@ -1,10 +1,10 @@
 ---
-title: Plugin: Legion HID 2
+title: Plugin: Lenovo Accssory
 ---
 
 ## Introduction
 
-The Legion HID plugin is used for interacting with the MCU on some Legion devices.
+The Lenovo Accessory plugin is used for interacting with the MCU on some Lenovo devices.
 
 ## Firmware Format
 
@@ -13,28 +13,26 @@ a packed binary file format.
 
 This plugin supports the following protocol ID:
 
-* `com.lenovo.legion-hid2`
+* `com.lenovo.accessory.input.hid`
 
 ## GUID Generation
 
 These devices use the standard DeviceInstanceId values, e.g.
 
-* `USB\VID_1A86&PID_E310`
+* `HIDRAW\VID_17EF&PID_629D`
+* `HIDRAW\VID_17EF&PID_6201`
 
 ## Update Behavior
 
+The device will run in bootloader.
 The device will restart after update.
 
 ## Vendor ID Security
 
-The vendor ID is set from the USB vendor, in this instance set to `USB:0x1A86`
+The vendor ID is set from the USB vendor, in this instance set to `USB:0x17EF`
 
 ## External Interface Access
 
-This plugin requires read/write access to `/dev/bus/usb`.
-
-## Version Considerations
-
-This plugin has been available since fwupd version `2.0.0`.
-
-Since: 2.0.0
+This plugin communicates with devices via the Linux **hidraw** subsystem  
+(`/dev/hidraw*`), not raw USB nodes.  
+Access is granted by the installed udev rule:

@@ -4,11 +4,11 @@ README FIRST
 You can install this archive on Linux using fwupd >= 1.6.2 on supported
 hardware. Use this command to install:
 
-    fwupdmgr install ThinkPad-40AY-28-Dock-DeviceFirmware-3.0.9.6.cab
+    fwupdtool install ThinkPad-40AY-28-Dock-DeviceFirmware-3.0.9.6.cab
 
 You can check the version of fwupd using:
 
-    fwupdmgr --version
+    fwupdtool --version
 
 LEGAL NOTICE
 ============
