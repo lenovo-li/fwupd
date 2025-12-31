@@ -1,9 +1,3 @@
-/*
- * Copyright 2016 Richard Hughes <richard@hughsie.com>
- *
- * SPDX-License-Identifier: LGPL-2.1-or-later
- */
-
 #include "config.h"
 
 #include "fu-lenovo-accessory-command.h"
@@ -208,8 +202,6 @@ fu_lenovo_hid_bootloader_init(FuLenovoHidBootloader *self)
 	fu_device_set_name(FU_DEVICE(self), "Liyuchao lenovohid bootloader");
 	fu_device_set_summary(FU_DEVICE(self), "Miniaturised USB wireless receiver (bootloader)");
 	fu_device_set_remove_delay(FU_DEVICE(self), FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
-	/*fu_device_register_private_flag(FU_DEVICE(self),
-	FU_LENOVO_HID_BOOTLOADER_FLAG_IS_SIGNED);*/
 }
 
 static void

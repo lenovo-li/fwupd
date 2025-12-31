@@ -14,5 +14,3 @@ G_DECLARE_FINAL_TYPE(FuLenovoHidBootloader,
 		     FU,
 		     LENOVO_HID_BOOTLOADER,
 		     FuHidrawDevice)
-
-#define FU_LENOVO_HID_BOOTLOADER_FLAG_IS_SIGNED "is-signed"
