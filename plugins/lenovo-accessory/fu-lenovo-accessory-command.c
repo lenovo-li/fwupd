@@ -9,7 +9,7 @@
 #include "fu-lenovo-accessory-command.h"
 #include "fu-lenovo-accessory-struct.h"
 
-gboolean
+static gboolean
 fu_lenovo_accessory_command_process(FuHidrawDevice *hidraw_device,
 				    guint8 *req,
 				    gsize req_sz,

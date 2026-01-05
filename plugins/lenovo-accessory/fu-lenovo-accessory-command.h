@@ -7,13 +7,6 @@
 #pragma once
 #include <fwupdplugin.h>
 gboolean
-fu_lenovo_accessory_command_process(FuHidrawDevice *hidraw_device,
-				    guint8 *req,
-				    gsize req_sz,
-				    FuIoctlFlags flags,
-				    GError **error);
-
-gboolean
 fu_lenovo_accessory_command_fwversion(FuHidrawDevice *hidraw_device,
 				      guint8 *major,
 				      guint8 *minor,
