@@ -18,10 +18,8 @@ fu_lenovo_accessory_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device,
 					       guint8 mode,
 					       GError **error);
 
-gboolean
-fu_lenovo_accessory_command_dfu_exit(FuHidrawDevice *hidraw_device,
-				     guint8 exit_code,
-				     GError **error);
+void
+fu_lenovo_accessory_command_dfu_exit(FuHidrawDevice *hidraw_device, guint8 exit_code);
 
 gboolean
 fu_lenovo_accessory_command_dfu_attribute(FuHidrawDevice *hidraw_device,
@@ -45,6 +43,6 @@ gboolean
 fu_lenovo_accessory_command_dfu_file(FuHidrawDevice *hidraw_device,
 				     guint8 file_type,
 				     guint32 address,
-				     guint8 *file_data,
+				     const guint8 *file_data,
 				     guint8 block_size,
 				     GError **error);

@@ -10,10 +10,10 @@ fu_lenovo_accessory_command_process(FuHidrawDevice *hidraw_device,
 				    FuIoctlFlags flags,
 				    GError **error)
 {
-	g_autofree guint8 *rsp = g_malloc0(req_sz); /* 自动 free，内容已清零 */
+	g_autofree guint8 *rsp = g_malloc0(req_sz);
 	guint retries = 5;
 	guint8 status = 0;
-	/* 下发命令 */
+	/* send data */
 	if (!fu_hidraw_device_set_feature(hidraw_device, req, req_sz, flags, error))
 		return FALSE;
 
@@ -72,6 +72,19 @@ fu_lenovo_accessory_command_fwversion(FuHidrawDevice *hidraw_device,
 	return TRUE;
 }
 
+/**
+ * fu_lenovo_accessory_command_dfu_set_devicemode:
+ * @hidraw_device: a #FuHidrawDevice
+ * @mode: the device mode to set (e.g., 0x02 for Bootloader mode)
+ * @error: a #GError, or %NULL
+ *
+ * Sets the device mode. If the mode is 0x02 (Bootloader mode), the device
+ * will undergo a hardware reset to switch its operating state.
+ * Similar to the DFU_EXIT command, this reboot causes the HID connection
+ * to drop, so we do not validate the return value in this specific case.
+ *
+ * Returns: %TRUE if the command was sent (or if a reboot was triggered)
+ */
 gboolean
 fu_lenovo_accessory_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device,
 					       guint8 mode,
@@ -83,29 +96,43 @@ fu_lenovo_accessory_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device,
 	data[FU_LENOVO_HID_DATA_HEADER_COMMAND_CLASS] = 0x00;
 	data[FU_LENOVO_HID_DATA_HEADER_COMMAND_ID] = 0x04;
 	data[FU_LENOVO_HID_DATA_HEADER_PAYLOAD_BASE] = mode;
-	return fu_lenovo_accessory_command_process(hidraw_device,
-						   data,
-						   65,
-						   FU_IOCTL_FLAG_RETRY,
-						   error);
+	if (mode == 0x02) {
+		fu_hidraw_device_set_feature(hidraw_device, data, 65, FU_IOCTL_FLAG_NONE, error);
+		return TRUE;
+	} else {
+		return fu_lenovo_accessory_command_process(hidraw_device,
+							   data,
+							   65,
+							   FU_IOCTL_FLAG_RETRY,
+							   error);
+	}
 }
 
-gboolean
-fu_lenovo_accessory_command_dfu_exit(FuHidrawDevice *hidraw_device,
-				     guint8 exit_code,
-				     GError **error)
+/**
+ * fu_lenovo_accessory_command_dfu_exit:
+ * @hidraw_device: a #FuHidrawDevice
+ * @exit_code: the exit status code (e.g., 0x00 for success/reboot)
+ *
+ * Sends the DFU_EXIT command to the device to finalize the update.
+ * Since this command triggers an immediate hardware reset/reboot, the
+ * device will disconnect from the USB bus before it can send an ACK.
+ * Consequently, the set_feature call is expected to return an error
+ * (e.g., Broken pipe or I/O error), which we intentionally ignore.
+ */
+void
+fu_lenovo_accessory_command_dfu_exit(FuHidrawDevice *hidraw_device, guint8 exit_code)
 {
+	g_autoptr(GError) error_local = NULL;
 	g_autofree guint8 *data = g_new0(guint8, 65);
 	memset(data, 0, 65);
 	data[FU_LENOVO_HID_DATA_HEADER_DATA_SIZE] = 0x00;
 	data[FU_LENOVO_HID_DATA_HEADER_COMMAND_CLASS] = 0x09;
 	data[FU_LENOVO_HID_DATA_HEADER_COMMAND_ID] = 0x05;
 	data[FU_LENOVO_HID_DATA_HEADER_PAYLOAD_BASE] = exit_code;
-	return fu_lenovo_accessory_command_process(hidraw_device,
-						   data,
-						   65,
-						   FU_IOCTL_FLAG_RETRY,
-						   error);
+	/* We ignore the return value here because the device reboots
+	   immediately upon receiving this command, causing the
+	   transport layer to report a failure. */
+	fu_hidraw_device_set_feature(hidraw_device, data, 65, FU_IOCTL_FLAG_NONE, &error_local);
 }
 
 gboolean
@@ -177,7 +204,7 @@ gboolean
 fu_lenovo_accessory_command_dfu_file(FuHidrawDevice *hidraw_device,
 				     guint8 file_type,
 				     guint32 address,
-				     guint8 *file_data,
+				     const guint8 *file_data,
 				     guint8 block_size,
 				     GError **error)
 {
