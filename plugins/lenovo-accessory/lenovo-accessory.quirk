@@ -1,11 +1,9 @@
-# BoolLoader
+# Bootloader
 [HIDRAW\VEN_17EF&DEV_6194]
 Plugin = lenovo_accessory
 GType = FuLenovoAccessoryHidBootloader
 FirmwareSizeMin = 0x4000
-#CounterpartGuid = HIDRAW\VEN_17EF&DEV_629D
 InstallDuration = 18
-
 
 # Lenovo_HID
 [HIDRAW\VEN_17EF&DEV_629D]

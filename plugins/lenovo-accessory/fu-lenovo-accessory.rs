@@ -10,12 +10,19 @@ enum FuLenovoHidDataHeader {
 }
 
 #[repr(u8)]
-enum FuLenovoHidCommandClass {
+enum FuLenovoAccessoryCommandClass {
+    DeviceInformation = 0x00,
     DfuClass = 0x09,
 }
 
 #[repr(u8)]
-enum FuLenovoHidCommandId {
+enum FuLenovoAccessoryInfoId {
+   FirmwareVersion = 0x01,
+   DeviceMode = 0x04,
+}
+
+#[repr(u8)]
+enum FuLenovoAccessoryDfuId {
     DfuAttribute = 0x01,
     DfuPrepare = 0x02,
     DfuFile = 0x03,
@@ -28,6 +35,16 @@ enum FuLenovoHidCommandId {
 enum FuLenovoHidCmdDir {
     CmdSet = 0x00,
     CmdGet = 0x01,
+}
+
+#[repr(u8)]
+enum FuLenovoStatus{
+    NewCommand = 0x00,
+    CommandBusy = 0x01,
+    CommandSuccessful = 0x02,
+    CommandFailure = 0x03,
+    CommandTimeOut = 0x04,
+    CommandNotSupport = 0x05,
 }
 
 #[derive(New,Validate,Parse,Default)]

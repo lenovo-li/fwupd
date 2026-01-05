@@ -1,3 +1,10 @@
+/*
+ * Copyright 2026 Yuchao Li <liyc44@lenovo.com>
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
+#pragma once
 #include <fwupdplugin.h>
 gboolean
 fu_lenovo_accessory_command_process(FuHidrawDevice *hidraw_device,
