@@ -1,6 +1,12 @@
+/*
+ * Copyright 2026 Yuchao Li <liyc44@lenovo.com>
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 #include "config.h"
 
-#include "fu-lenovo-accessory-command.h"
+#include "fu-lenovo-accessory-hid-command.h"
 #include "fu-lenovo-accessory-hid-device.h"
 
 struct _FuLenovoAccessoryHidDevice {
@@ -45,11 +51,11 @@ fu_lenovo_accessory_hid_device_setup(FuDevice *device, GError **error)
 	if (!fu_device_probe(usb_parent, error))
 		return FALSE;
 	fu_device_set_version_raw(device, fu_usb_device_get_release(FU_USB_DEVICE(usb_parent)));
-	if (!fu_lenovo_accessory_command_fwversion(FU_HIDRAW_DEVICE(device),
-						   &major,
-						   &minor,
-						   &internal,
-						   error))
+	if (!fu_lenovo_accessory_hid_command_fwversion(FU_HIDRAW_DEVICE(device),
+						       &major,
+						       &minor,
+						       &internal,
+						       error))
 		return FALSE;
 	version = g_strdup_printf("%u.%u.%u", major, minor, internal);
 	fu_device_set_version(device, version);
@@ -66,7 +72,7 @@ fu_lenovo_accessory_hid_device_setup(FuDevice *device, GError **error)
 			    pid);
 		return FALSE;
 	}
-	fu_device_add_protocol(device, "com.lenovo.accessory.input.hid");
+	fu_device_add_protocol(device, "com.lenovo.accessory");
 	return TRUE;
 }
 
@@ -76,7 +82,6 @@ fu_lenovo_accessory_hid_device_probe(FuDevice *device, GError **error)
 	return TRUE;
 }
 
-/* ------- detach ------- */
 static gboolean
 fu_lenovo_accessory_hid_device_detach(FuDevice *device, FuProgress *progress, GError **error)
 {
@@ -85,9 +90,7 @@ fu_lenovo_accessory_hid_device_detach(FuDevice *device, FuProgress *progress, GE
 
 	fu_progress_set_id(progress, G_STRLOC);
 	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 100, "switch-dfu");
-	fu_lenovo_accessory_command_dfu_set_devicemode(FU_HIDRAW_DEVICE(self),
-						       2,
-						       error); /*该指令会导致设备进入dfu*/
+	fu_lenovo_accessory_hid_command_dfu_set_devicemode(FU_HIDRAW_DEVICE(self), 2, error);
 	fu_device_add_flag(device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG);
 	fu_progress_step_done(progress);
 	return TRUE;
@@ -124,7 +127,7 @@ fu_lenovo_accessory_hid_device_init(FuLenovoAccessoryHidDevice *self)
 	fu_device_set_version_format(FU_DEVICE(self),
 				     FWUPD_VERSION_FORMAT_DELL_BIOS); /*设置fw版本号格式*/
 	fu_device_add_icon(FU_DEVICE(self), FU_DEVICE_ICON_USB_RECEIVER);
-	fu_device_set_summary(FU_DEVICE(self), "liyuchao test lenovo USB wireless receiver");
+	fu_device_set_summary(FU_DEVICE(self), "lenovo accessory wireless receiver");
 	fu_device_set_remove_delay(FU_DEVICE(self), FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_READ);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_WRITE);

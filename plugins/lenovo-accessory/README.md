@@ -1,38 +1,45 @@
 ---
-title: Plugin: Lenovo Accssory
+title: Plugin: Lenovo Accessory
 ---
 
 ## Introduction
 
-The Lenovo Accessory plugin is used for interacting with the MCU on some Lenovo devices.
+The Lenovo Accessory plugin is designed to support the standardized firmware update protocol for Lenovo peripherals.
+This is an in-house protocol developed by Lenovo that is MCU-agnostic and supports multiple transports.
 
 ## Firmware Format
 
-The daemon will decompress the cabinet archive and extract a firmware blob in
-a packed binary file format.
+The daemon decompresses the cabinet archive and extracts a firmware blob in a packed binary format.
+The payload is currently unsigned.
 
-This plugin supports the following protocol ID:
+## Protocol Support
 
-* `com.lenovo.accessory.input.hid`
+This plugin supports the Lenovo standardized HID/BLE update protocol.
+Current implementation focuses on the HID transport, with plans to support BLE custom services in the future.
+
+* **USB HID**: Uses Get/Set Feature reports.
+* **Bluetooth LE**: Uses a custom UUID service.
 
 ## GUID Generation
 
-These devices use the standard DeviceInstanceId values, e.g.
+These devices use standard HID instance IDs for identification.
+When in bootloader mode, devices may share a common PID (e.g., `0x6194`), so specific instance ID matching is used to differentiate devices.
+
+Typical IDs include:
 
 * `HIDRAW\VID_17EF&PID_629D`
 * `HIDRAW\VID_17EF&PID_6201`
 
 ## Update Behavior
 
-The device will run in bootloader.
-The device will restart after update.
+The device reboots into a dedicated bootloader mode for the update process.
+A final restart is performed after the firmware is successfully written to the device.
 
 ## Vendor ID Security
 
-The vendor ID is set from the USB vendor, in this instance set to `USB:0x17EF`
+The vendor ID is derived from the USB vendor, which is `USB:0x17EF`.
 
 ## External Interface Access
 
-This plugin communicates with devices via the Linux **hidraw** subsystem  
-(`/dev/hidraw*`), not raw USB nodes.  
-Access is granted by the installed udev rule:
+This plugin communicates with devices via the Linux **hidraw** subsystem (`/dev/hidraw*`).
+Access is granted through the installed udev rules.

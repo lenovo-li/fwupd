@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Denis Pynkin <denis.pynkin@collabora.com>
+ * Copyright 2026 Yuchao Li <liyc44@lenovo.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */

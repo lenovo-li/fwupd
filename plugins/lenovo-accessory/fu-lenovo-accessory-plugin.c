@@ -1,9 +1,15 @@
+/*
+ * Copyright 2026 Yuchao Li <liyc44@lenovo.com>
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
+
 #include "config.h"
 
+#include "fu-lenovo-accessory-ble-device.h"
+#include "fu-lenovo-accessory-hid-bootloader.h"
 #include "fu-lenovo-accessory-hid-device.h"
 #include "fu-lenovo-accessory-plugin.h"
-#include "fu-lenovo-hid-bootloader.h"
-#include "fu-lenovo-hid-firmware.h"
 
 struct _FuLenovoAccessoryPlugin {
 	FuPlugin parent_instance;
@@ -22,12 +28,11 @@ fu_lenovo_accessory_plugin_constructed(GObject *obj)
 {
 	FuPlugin *plugin = FU_PLUGIN(obj);
 	fu_plugin_add_device_gtype(plugin, FU_TYPE_LENOVO_ACCESSORY_HID_DEVICE);
-	fu_plugin_add_device_gtype(plugin, FU_TYPE_LENOVO_HID_BOOTLOADER);
-	fu_plugin_add_firmware_gtype(plugin, NULL, FU_TYPE_LENOVO_HID_FIRMWARE);
+	fu_plugin_add_device_gtype(plugin, FU_TYPE_LENOVO_ACCESSORY_HID_BOOTLOADER);
+	fu_plugin_add_device_gtype(plugin, FU_TYPE_LENOVO_ACCESSORY_BLE_DEVICE);
 	/*fu_plugin_set_device_gtype_default(plugin, FU_TYPE_LENOVO_HID_DEVICE);*/
 	fu_plugin_add_udev_subsystem(plugin, "hidraw");
 	fu_plugin_add_udev_subsystem(plugin, "usb");
-	fu_plugin_add_rule(plugin, FU_PLUGIN_RULE_CONFLICTS, "unifying");
 }
 
 static void
