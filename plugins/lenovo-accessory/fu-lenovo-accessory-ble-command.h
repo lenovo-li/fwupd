@@ -14,12 +14,19 @@ fu_lenovo_accessory_ble_command_fwversion(FuBluezDevice *ble_device,
 					  GError **error);
 
 gboolean
+fu_lenovo_accessory_ble_command_get_devicemode(FuBluezDevice *ble_device,
+					       guint8 *mode,
+					       GError **error);
+
+gboolean
 fu_lenovo_accessory_ble_command_dfu_set_devicemode(FuBluezDevice *ble_device,
 						   guint8 mode,
 						   GError **error);
 
-void
-fu_lenovo_accessory_ble_command_dfu_exit(FuBluezDevice *ble_device, guint8 exit_code);
+gboolean
+fu_lenovo_accessory_ble_command_dfu_exit(FuBluezDevice *ble_device,
+					 guint8 exit_code,
+					 GError **error);
 
 gboolean
 fu_lenovo_accessory_ble_command_dfu_attribute(FuBluezDevice *ble_device,
@@ -46,3 +53,9 @@ fu_lenovo_accessory_ble_command_dfu_file(FuBluezDevice *ble_device,
 					 const guint8 *file_data,
 					 guint8 block_size,
 					 GError **error);
+
+gboolean
+fu_lenovo_accessory_ble_command_dfu_crc(FuBluezDevice *ble_device, guint32 *crc32, GError **error);
+
+gboolean
+fu_lenovo_accessory_ble_command_dfu_entry(FuBluezDevice *ble_device, GError **error);

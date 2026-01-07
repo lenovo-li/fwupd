@@ -61,3 +61,23 @@ struct FuLenovoBleData{
     cmd:FuLenovoAccessoryCmd,
     data: [u8; 58],
 }
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoHidDfuFw{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    file_type: u8,
+    offset_address:u32be,
+    data: [u8; 32],
+    reserved: [u8; 16],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDfuFw{
+    cmd:FuLenovoAccessoryCmd,
+    file_type: u8,
+    offset_address:u32be,
+    data: [u8; 32],
+}

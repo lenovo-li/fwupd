@@ -12,6 +12,18 @@
 #define UUID_WRITE "c1d02501-2d1f-400a-95d2-6a2f7bca0c25"
 #define UUID_READ  "c1d02502-2d1f-400a-95d2-6a2f7bca0c25"
 
+/*static void
+my_manual_dump(const gchar *title, const guint8 *data, gsize len)
+{
+	g_print("%s [%" G_GSIZE_FORMAT " bytes]:\n", title, len);
+	for (gsize i = 0; i < len; i++) {
+		g_print("%02x ", data[i]);
+		if ((i + 1) % 16 == 0)
+			g_print("\n");
+	}
+	g_print("\n---------------------------\n");
+}*/
+
 static gboolean
 fu_lenovo_accessory_ble_command_process(FuBluezDevice *ble_device,
 					GByteArray *buffer,
@@ -19,15 +31,18 @@ fu_lenovo_accessory_ble_command_process(FuBluezDevice *ble_device,
 					GError **error)
 {
 	guint retries = 50;
+	/*my_manual_dump("DEBUG WRITE", buffer->data, buffer->len);*/
 	if (!fu_bluez_device_write(ble_device, UUID_WRITE, buffer, error)) {
 		g_prefix_error_literal(error, "failed to write cmd: ");
 		return FALSE;
 	}
+
 	while (retries--) {
 		guint8 status = 0;
 		g_autoptr(GByteArray) res = fu_bluez_device_read(ble_device, UUID_READ, error);
 		if (res == NULL)
 			return FALSE;
+		/*my_manual_dump("DEBUG READ", res->data, res->len);*/
 		if (res->len < 1) {
 			g_set_error_literal(error,
 					    FWUPD_ERROR,
@@ -104,19 +119,40 @@ fu_lenovo_accessory_ble_command_fwversion(FuBluezDevice *ble_device,
 	return TRUE;
 }
 
-/**
- * fu_lenovo_accessory_ble_command_dfu_set_devicemode:
- * @hidraw_device: a #FuHidrawDevice
- * @mode: the device mode to set (e.g., 0x02 for Bootloader mode)
- * @error: a #GError, or %NULL
- *
- * Sets the device mode. If the mode is 0x02 (Bootloader mode), the device
- * will undergo a hardware reset to switch its operating state.
- * Similar to the DFU_EXIT command, this reboot causes the HID connection
- * to drop, so we do not validate the return value in this specific case.
- *
- * Returns: %TRUE if the command was sent (or if a reboot was triggered)
- */
+gboolean
+fu_lenovo_accessory_ble_command_get_devicemode(FuBluezDevice *ble_device,
+					       guint8 *mode,
+					       GError **error)
+{
+	gsize bufsz = 0;
+	const guint8 *receive_data = NULL;
+	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
+	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+
+	fu_lenovo_accessory_cmd_set_target_status(lenovo_hid_cmd, 0x00);
+	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x01);
+	fu_lenovo_accessory_cmd_set_command_class(
+	    lenovo_hid_cmd,
+	    FU_LENOVO_ACCESSORY_COMMAND_CLASS_DEVICE_INFORMATION);
+	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
+					       FU_LENOVO_ACCESSORY_INFO_ID_DEVICE_MODE |
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
+
+	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+		return FALSE;
+	if (!fu_lenovo_accessory_ble_command_process(ble_device,
+						     lenovo_ble_data->buf,
+						     FU_IOCTL_FLAG_RETRY,
+						     error)) {
+		return FALSE;
+	}
+	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufsz);
+	if (receive_data == NULL || bufsz == 0)
+		return FALSE;
+	*mode = receive_data[0];
+	return TRUE;
+}
+
 gboolean
 fu_lenovo_accessory_ble_command_dfu_set_devicemode(FuBluezDevice *ble_device,
 						   guint8 mode,
@@ -132,7 +168,7 @@ fu_lenovo_accessory_ble_command_dfu_set_devicemode(FuBluezDevice *ble_device,
 	    FU_LENOVO_ACCESSORY_COMMAND_CLASS_DEVICE_INFORMATION);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_INFO_ID_DEVICE_MODE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 
 	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
 		return FALSE;
@@ -145,33 +181,31 @@ fu_lenovo_accessory_ble_command_dfu_set_devicemode(FuBluezDevice *ble_device,
 						       FU_IOCTL_FLAG_RETRY,
 						       error);
 }
-/**
- * fu_lenovo_accessory_ble_command_dfu_exit:
- * @hidraw_device: a #FuHidrawDevice
- * @exit_code: the exit status code (e.g., 0x00 for success/reboot)
- *
- * Sends the DFU_EXIT command to the device to finalize the update.
- * Since this command triggers an immediate hardware reset/reboot, the
- * device will disconnect from the USB bus before it can send an ACK.
- * Consequently, the set_feature call is expected to return an error
- * (e.g., Broken pipe or I/O error), which we intentionally ignore.
- */
-void
-fu_lenovo_accessory_ble_command_dfu_exit(FuBluezDevice *ble_device, guint8 exit_code)
+
+gboolean
+fu_lenovo_accessory_ble_command_dfu_exit(FuBluezDevice *ble_device,
+					 guint8 exit_code,
+					 GError **error)
 {
-	g_autoptr(GError) error_local = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
 	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
-
+	fu_lenovo_accessory_cmd_set_target_status(lenovo_hid_cmd, 0x00);
+	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x01);
 	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_EXIT |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, &error_local))
-		return;
-	fu_bluez_device_write(ble_device, UUID_WRITE, lenovo_ble_data->buf, &error_local);
+	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+		return FALSE;
+	if (!fu_lenovo_ble_data_set_data(lenovo_ble_data, &exit_code, 1, error))
+		return FALSE;
+	if (!fu_bluez_device_write(ble_device, UUID_WRITE, lenovo_ble_data->buf, error)) {
+		g_prefix_error_literal(error, "failed to write cmd: ");
+		return FALSE;
+	}
+	return TRUE;
 }
 
 gboolean
@@ -247,7 +281,7 @@ fu_lenovo_accessory_ble_command_dfu_prepare(FuBluezDevice *ble_device,
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_PREPARE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 
 	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
 		return FALSE;
@@ -274,35 +308,80 @@ fu_lenovo_accessory_ble_command_dfu_file(FuBluezDevice *ble_device,
 					 guint8 block_size,
 					 GError **error)
 {
-	g_autofree guint8 *send_data = g_new0(guint8, block_size + 5);
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleDfuFw) lenovo_ble_file = fu_lenovo_ble_dfu_fw_new();
 
+	fu_lenovo_accessory_cmd_set_target_status(lenovo_hid_cmd, 0x00);
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, block_size + 5);
 	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_FILE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
+
+	if (!fu_lenovo_ble_dfu_fw_set_cmd(lenovo_ble_file, lenovo_hid_cmd, error))
+		return FALSE;
+	fu_lenovo_ble_dfu_fw_set_file_type(lenovo_ble_file, file_type);
+	fu_lenovo_ble_dfu_fw_set_offset_address(lenovo_ble_file, address);
+	if (!fu_lenovo_ble_dfu_fw_set_data(lenovo_ble_file, file_data, block_size, error))
+		return FALSE;
+	return fu_lenovo_accessory_ble_command_process(ble_device,
+						       lenovo_ble_file->buf,
+						       FU_IOCTL_FLAG_RETRY,
+						       error);
+}
+
+gboolean
+fu_lenovo_accessory_ble_command_dfu_crc(FuBluezDevice *ble_device, guint32 *crc32, GError **error)
+{
+	gsize bufz = 0;
+	const guint8 *receive_data = NULL;
+	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
+	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+
+	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x05);
+	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
+						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
+	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
+					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_CRC |
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_GET << 7));
 
 	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
 		return FALSE;
-
-	send_data[0] = file_type;
-	fu_memwrite_uint32(send_data + 1, address, G_BIG_ENDIAN);
-	if (!fu_memcpy_safe(send_data,
-			    block_size + 5,
-			    5,
-			    file_data,
-			    block_size,
-			    0,
-			    block_size,
-			    error))
+	if (!fu_lenovo_accessory_ble_command_process(ble_device,
+						     lenovo_ble_data->buf,
+						     FU_IOCTL_FLAG_RETRY,
+						     error))
 		return FALSE;
 
-	if (!fu_lenovo_ble_data_set_data(lenovo_ble_data, send_data, block_size + 5, error))
+	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufz);
+	if (receive_data == NULL || bufz < 4) {
+		g_set_error_literal(error,
+				    FWUPD_ERROR,
+				    FWUPD_ERROR_READ,
+				    "invalid attribute length");
 		return FALSE;
+	}
+	if (crc32 != NULL)
+		*crc32 = fu_memread_uint32(receive_data, G_BIG_ENDIAN);
+	return TRUE;
+}
 
+gboolean
+fu_lenovo_accessory_ble_command_dfu_entry(FuBluezDevice *ble_device, GError **error)
+{
+	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
+	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+
+	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0);
+	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
+						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
+	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
+					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_ENTRY |
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
+
+	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+		return FALSE;
 	return fu_lenovo_accessory_ble_command_process(ble_device,
 						       lenovo_ble_data->buf,
 						       FU_IOCTL_FLAG_RETRY,

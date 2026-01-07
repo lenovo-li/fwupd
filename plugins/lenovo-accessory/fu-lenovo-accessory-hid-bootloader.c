@@ -49,7 +49,8 @@ fu_lenovo_accessory_hid_bootloader_write_file_data(FuLenovoAccessoryHidBootloade
 static gboolean
 fu_lenovo_accessory_hid_bootloader_attach(FuDevice *device, FuProgress *progress, GError **error)
 {
-	fu_lenovo_accessory_hid_command_dfu_exit(FU_HIDRAW_DEVICE(device), 0);
+	if (!fu_lenovo_accessory_hid_command_dfu_exit(FU_HIDRAW_DEVICE(device), 0, error))
+		return FALSE;
 	fu_device_add_flag(device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG);
 	return TRUE;
 }
@@ -173,9 +174,8 @@ fu_lenovo_accessory_hid_bootloader_init(FuLenovoAccessoryHidBootloader *self)
 	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_UNSIGNED_PAYLOAD);
 	fu_device_add_private_flag(FU_DEVICE(self), FU_DEVICE_PRIVATE_FLAG_REPLUG_MATCH_GUID);
 	fu_device_add_icon(FU_DEVICE(self), FU_DEVICE_ICON_USB_RECEIVER);
-	fu_device_set_version_format(FU_DEVICE(self), FWUPD_VERSION_FORMAT_DELL_BIOS);
+	fu_device_set_version_format(FU_DEVICE(self), FWUPD_VERSION_FORMAT_TRIPLET);
 	fu_device_set_name(FU_DEVICE(self), "lenovohid accessory hid bootloader");
-	fu_device_set_summary(FU_DEVICE(self), "Miniaturised USB wireless receiver (bootloader)");
 	fu_device_set_remove_delay(FU_DEVICE(self), FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
 }
 

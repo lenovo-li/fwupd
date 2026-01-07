@@ -17,73 +17,166 @@ G_DEFINE_TYPE(FuLenovoAccessoryBleDevice, fu_lenovo_accessory_ble_device, FU_TYP
 #define UUID_READ  "c1d02502-2d1f-400a-95d2-6a2f7bca0c25"
 
 static gboolean
-fu_lenovo_accessory_ble_device_setup(FuDevice *device, GError **error)
+fu_lenovo_accessory_ble_device_write_file_data(FuLenovoAccessoryBleDevice *self,
+					       guint8 file_type,
+					       GBytes *file_data,
+					       guint32 file_size,
+					       guint8 block_size,
+					       FuProgress *progress,
+					       GError **error)
 {
-	/*g_autoptr(GByteArray) buf_write = g_byte_array_new();
-	g_autoptr(GByteArray) buf_read = NULL;
-	g_autofree gchar *id_display = NULL;
-	g_autofree gchar *id_logical = NULL;
-	g_autoptr(FuContext) buf_context = NULL;
-	id_display = fu_device_get_id_display(device);
-	id_logical = fu_device_get_logical_id(device);
-	g_print("id_display:%s\n", id_display);
-	g_print("id_logical:%s\n", id_logical);
-	g_print("physical_id:%s\n", fu_device_get_physical_id(device));
-	g_print("backend_id:%s\n", fu_device_get_backend_id(device));
-	g_print("proxy_guid:%s\n", fu_device_get_proxy_guid(device));
-	g_print("priority:%d\n", fu_device_get_priority(device));
-	GPtrArray *instance_ids = fu_device_get_instance_ids(device);
-	for (guint i = 0; i < instance_ids->len; i++) {
-		const gchar *instance_id = g_ptr_array_index(instance_ids, i);
-		g_print("instance_id %d:%s\n", i, instance_id);
+	g_autoptr(FuChunkArray) chunks = NULL;
+	chunks = fu_chunk_array_new_from_bytes(file_data, 0, 0, block_size);
+	for (guint32 i = 0; i < fu_chunk_array_length(chunks); i++) {
+		g_autoptr(FuChunk) chk = NULL;
+		chk = fu_chunk_array_index(chunks, i, error);
+		if (chk == NULL)
+			return FALSE;
+		if (!fu_lenovo_accessory_ble_command_dfu_file(FU_BLUEZ_DEVICE(self),
+							      file_type,
+							      fu_chunk_get_address(chk),
+							      fu_chunk_get_data(chk),
+							      (guint8)fu_chunk_get_data_sz(chk),
+							      error))
+			return FALSE;
+		fu_progress_set_percentage_full(fu_progress_get_child(progress),
+						i,
+						fu_chunk_array_length(chunks));
 	}
-	GPtrArray *guids = fu_device_get_guids(device);
-	for (guint i = 0; i < guids->len; i++) {
-		const gchar *guid = g_ptr_array_index(guids, i);
-		g_print("instance_id %d:%s\n", i, guid);
-	}
-	g_byte_array_append(buf_write, data, sizeof(data));
-	if (!fu_bluez_device_write(FU_BLUEZ_DEVICE(device), UUID_WRITE, buf_write, error)) {
-		g_prefix_error(error, "failed to write version cmd: ");
-		return FALSE;
-	}
-	buf_read = fu_bluez_device_read(FU_BLUEZ_DEVICE(device), UUID_READ, error);
-	if (buf_read->len < 9) {
-		g_set_error(error,
-			    FWUPD_ERROR,
-			    FWUPD_ERROR_READ,
-			    "invalid response length: %u",
-			    buf_read->len);
-		return FALSE;
-	}
-	version_str = g_strdup_printf("%u.%u.%u",
-				      (guint)buf_read->data[6],
-				      (guint)buf_read->data[7],
-				      (guint)buf_read->data[8]);
-	fu_device_set_version(device, version_str);
-	g_debug("Lenovo BLE version detected: %s", version_str);*/
 	return TRUE;
 }
 
-/*static gboolean
-fu_lenovo_accessory_ble_write_firmware(FuDevice *device,
-				       FuFirmware *firmware,
-				       FuProgress *progress,
-				       FwupdInstallFlags flags,
-				       GError **error)
+static gboolean
+fu_lenovo_accessory_ble_device_write_firmware(FuDevice *device,
+					      FuFirmware *firmware,
+					      FuProgress *progress,
+					      FwupdInstallFlags flags,
+					      GError **error)
 {
+	gsize fw_size = 0;
+	guint32 file_crc = 0;
+	guint32 device_crc = 0;
+	GBytes *file_data = fu_firmware_get_bytes(firmware, error);
+	if (!file_data)
+		return FALSE;
+	fw_size = g_bytes_get_size(file_data);
+	file_crc = fu_crc32_bytes(FU_CRC_KIND_B32_STANDARD, file_data);
+	fu_progress_set_id(progress, G_STRLOC);
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_WRITE, 5, "prepare");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_WRITE, 95, "write");
+	if (!fu_lenovo_accessory_ble_command_dfu_entry(FU_BLUEZ_DEVICE(device), error)) {
+		if (!fu_lenovo_accessory_ble_command_dfu_exit(FU_BLUEZ_DEVICE(device), 0, error))
+			return FALSE;
+		return FALSE;
+	}
+	if (!fu_lenovo_accessory_ble_command_dfu_prepare(FU_BLUEZ_DEVICE(device),
+							 1,
+							 0,
+							 (guint32)fw_size,
+							 file_crc,
+							 error)) {
+		if (!fu_lenovo_accessory_ble_command_dfu_exit(FU_BLUEZ_DEVICE(device), 0, error))
+			return FALSE;
+		return FALSE;
+	}
+	fu_progress_step_done(progress);
+	if (!fu_lenovo_accessory_ble_device_write_file_data(FU_LENOVO_ACCESSORY_BLE_DEVICE(device),
+							    1,
+							    file_data,
+							    fw_size,
+							    32,
+							    progress,
+							    error))
+		return FALSE;
+	if (!fu_lenovo_accessory_ble_command_dfu_crc(FU_BLUEZ_DEVICE(device), &device_crc, error)) {
+		g_prefix_error(error, "Lenovo BLE CRC Error (device 0x%08x): ", device_crc);
+		if (!fu_lenovo_accessory_ble_command_dfu_exit(FU_BLUEZ_DEVICE(device), 0, error))
+			return FALSE;
+		return FALSE;
+	}
+	if (device_crc != file_crc) {
+		g_set_error(error,
+			    FWUPD_ERROR,
+			    FWUPD_ERROR_WRITE,
+			    "CRC mismatch: device 0x%08x != file 0x%08x",
+			    device_crc,
+			    file_crc);
+		return FALSE;
+	}
+	fu_progress_step_done(progress);
 	return TRUE;
-}*/
+}
+
+static gboolean
+fu_lenovo_accessory_ble_device_attach(FuDevice *device, FuProgress *progress, GError **error)
+{
+	if (!fu_lenovo_accessory_ble_command_dfu_exit(FU_BLUEZ_DEVICE(device), 0, error)) {
+		g_prefix_error_literal(error, "failed to exit: ");
+		return FALSE;
+	}
+	fu_device_add_flag(device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG);
+	return TRUE;
+}
+
+static gboolean
+fu_lenovo_accessory_ble_device_setup(FuDevice *device, GError **error)
+{
+	g_autofree gchar *version = NULL;
+	guint8 major = 0;
+	guint8 minor = 0;
+	guint8 internal = 0;
+	if (!fu_lenovo_accessory_ble_command_fwversion(FU_BLUEZ_DEVICE(device),
+						       &major,
+						       &minor,
+						       &internal,
+						       error))
+		return FALSE;
+
+	version = g_strdup_printf("%u.%u.%02u", major, minor, internal);
+	fu_device_set_version(device, version);
+
+	return TRUE;
+}
+
+static void
+fu_lenovo_accessory_ble_device_set_progress(FuDevice *device, FuProgress *progress)
+{
+	fu_progress_set_id(progress, G_STRLOC);
+	fu_progress_add_step(progress, FWUPD_STATUS_DECOMPRESSING, 0, "prepare-fw");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 0, "detach");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_WRITE, 99, "write");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 1, "attach");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_BUSY, 0, "reload");
+}
+
+static gboolean
+fu_lenovo_accessory_ble_device_probe(FuDevice *device, GError **error)
+{
+	if (!FU_DEVICE_CLASS(fu_lenovo_accessory_ble_device_parent_class)->probe(device, error))
+		return FALSE;
+
+	fu_device_set_version_format(device, FWUPD_VERSION_FORMAT_TRIPLET);
+	return TRUE;
+}
 
 static void
 fu_lenovo_accessory_ble_device_init(FuLenovoAccessoryBleDevice *self)
 {
+	fu_device_set_remove_delay(FU_DEVICE(self), 10000); /* ms */
+	fu_device_add_protocol(FU_DEVICE(self), "com.lenovo.accessory");
+	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_UPDATABLE);
+	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_UNSIGNED_PAYLOAD);
+	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_DUAL_IMAGE);
+	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_USABLE_DURING_UPDATE);
 }
 
 static void
 fu_lenovo_accessory_ble_device_class_init(FuLenovoAccessoryBleDeviceClass *klass)
 {
 	FuDeviceClass *device_class = FU_DEVICE_CLASS(klass);
+	device_class->write_firmware = fu_lenovo_accessory_ble_device_write_firmware;
+	device_class->set_progress = fu_lenovo_accessory_ble_device_set_progress;
 	device_class->setup = fu_lenovo_accessory_ble_device_setup;
-	/*device_class->write_firmware = fu_lenovo_accessory_ble_write_firmware;*/
+	device_class->probe = fu_lenovo_accessory_ble_device_probe;
+	device_class->attach = fu_lenovo_accessory_ble_device_attach;
 }

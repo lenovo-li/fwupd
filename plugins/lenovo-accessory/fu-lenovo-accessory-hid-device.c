@@ -101,10 +101,10 @@ fu_lenovo_accessory_hid_device_set_progress(FuDevice *device, FuProgress *progre
 {
 	fu_progress_set_id(progress, G_STRLOC);
 	fu_progress_add_step(progress, FWUPD_STATUS_DECOMPRESSING, 0, "prepare-fw");
-	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 0, "detach");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 4, "detach");
 	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_WRITE, 70, "write");
-	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 4, "attach");
-	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_BUSY, 27, "reload");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_RESTART, 0, "attach");
+	fu_progress_add_step(progress, FWUPD_STATUS_DEVICE_BUSY, 26, "reload");
 }
 
 static void
@@ -124,10 +124,8 @@ fu_lenovo_accessory_hid_device_init(FuLenovoAccessoryHidDevice *self)
 	/*fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_CAN_EMULATION_TAG);*/
 	fu_device_add_flag(FU_DEVICE(self), FWUPD_DEVICE_FLAG_UNSIGNED_PAYLOAD);
 	fu_device_add_private_flag(FU_DEVICE(self), FU_DEVICE_PRIVATE_FLAG_REPLUG_MATCH_GUID);
-	fu_device_set_version_format(FU_DEVICE(self),
-				     FWUPD_VERSION_FORMAT_DELL_BIOS); /*设置fw版本号格式*/
+	fu_device_set_version_format(FU_DEVICE(self), FWUPD_VERSION_FORMAT_TRIPLET);
 	fu_device_add_icon(FU_DEVICE(self), FU_DEVICE_ICON_USB_RECEIVER);
-	fu_device_set_summary(FU_DEVICE(self), "lenovo accessory wireless receiver");
 	fu_device_set_remove_delay(FU_DEVICE(self), FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_READ);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_WRITE);

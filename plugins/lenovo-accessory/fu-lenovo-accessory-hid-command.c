@@ -89,19 +89,6 @@ fu_lenovo_accessory_hid_command_fwversion(FuHidrawDevice *hidraw_device,
 	return TRUE;
 }
 
-/**
- * fu_lenovo_accessory_hid_command_dfu_set_devicemode:
- * @hidraw_device: a #FuHidrawDevice
- * @mode: the device mode to set (e.g., 0x02 for Bootloader mode)
- * @error: a #GError, or %NULL
- *
- * Sets the device mode. If the mode is 0x02 (Bootloader mode), the device
- * will undergo a hardware reset to switch its operating state.
- * Similar to the DFU_EXIT command, this reboot causes the HID connection
- * to drop, so we do not validate the return value in this specific case.
- *
- * Returns: %TRUE if the command was sent (or if a reboot was triggered)
- */
 gboolean
 fu_lenovo_accessory_hid_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device,
 						   guint8 mode,
@@ -116,7 +103,7 @@ fu_lenovo_accessory_hid_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device
 	    FU_LENOVO_ACCESSORY_COMMAND_CLASS_DEVICE_INFORMATION);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_INFO_ID_DEVICE_MODE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 	fu_lenovo_accessory_cmd_set_flag_profile(lenovo_hid_cmd, 0x00);
 	fu_lenovo_hid_data_set_reportid(lenovo_hid_data, 0x00);
 	if (!fu_lenovo_hid_data_set_cmd(lenovo_hid_data, lenovo_hid_cmd, error))
@@ -124,12 +111,11 @@ fu_lenovo_accessory_hid_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device
 	if (!fu_lenovo_hid_data_set_data(lenovo_hid_data, &mode, 1, error))
 		return FALSE;
 	if (mode == 0x02) {
-		fu_hidraw_device_set_feature(hidraw_device,
-					     lenovo_hid_data->buf->data,
-					     lenovo_hid_data->buf->len,
-					     FU_IOCTL_FLAG_NONE,
-					     error);
-		return TRUE;
+		return (fu_hidraw_device_set_feature(hidraw_device,
+						     lenovo_hid_data->buf->data,
+						     lenovo_hid_data->buf->len,
+						     FU_IOCTL_FLAG_NONE,
+						     error));
 	} else {
 		return fu_lenovo_accessory_hid_command_process(hidraw_device,
 							       lenovo_hid_data->buf->data,
@@ -150,8 +136,10 @@ fu_lenovo_accessory_hid_command_dfu_set_devicemode(FuHidrawDevice *hidraw_device
  * Consequently, the set_feature call is expected to return an error
  * (e.g., Broken pipe or I/O error), which we intentionally ignore.
  */
-void
-fu_lenovo_accessory_hid_command_dfu_exit(FuHidrawDevice *hidraw_device, guint8 exit_code)
+gboolean
+fu_lenovo_accessory_hid_command_dfu_exit(FuHidrawDevice *hidraw_device,
+					 guint8 exit_code,
+					 GError **error)
 {
 	g_autoptr(GError) error_local = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
@@ -162,19 +150,25 @@ fu_lenovo_accessory_hid_command_dfu_exit(FuHidrawDevice *hidraw_device, guint8 e
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_EXIT |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 	fu_lenovo_accessory_cmd_set_flag_profile(lenovo_hid_cmd, 0x00);
 	fu_lenovo_hid_data_set_reportid(lenovo_hid_data, 0x00);
-	if (!fu_lenovo_hid_data_set_cmd(lenovo_hid_data, lenovo_hid_cmd, &error_local))
-		return;
-	/* We ignore the return value here because the device reboots
-	   immediately upon receiving this command, causing the
-	   transport layer to report a failure. */
-	fu_hidraw_device_set_feature(hidraw_device,
-				     lenovo_hid_data->buf->data,
-				     lenovo_hid_data->buf->len,
-				     FU_IOCTL_FLAG_NONE,
-				     &error_local);
+	if (!fu_lenovo_hid_data_set_cmd(lenovo_hid_data, lenovo_hid_cmd, error))
+		return FALSE;
+	/*
+	 * Note: fu_hidraw_device_set_feature() is guaranteed to return FALSE here.
+	 * The device performs an immediate reset/reboot as soon as it receives the
+	 * DFU_EXIT command and therefore never sends back an ACK. The resulting
+	 * error (e.g., -EPIPE or -EIO) is expected and indicates that the reboot
+	 * was successfully triggered.
+	 */
+	if (fu_hidraw_device_set_feature(hidraw_device,
+					 lenovo_hid_data->buf->data,
+					 lenovo_hid_data->buf->len,
+					 FU_IOCTL_FLAG_NONE,
+					 error))
+		return TRUE;
+	return TRUE;
 }
 
 gboolean
@@ -241,7 +235,7 @@ fu_lenovo_accessory_hid_command_dfu_prepare(FuHidrawDevice *hidraw_device,
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_PREPARE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 	fu_lenovo_accessory_cmd_set_flag_profile(lenovo_hid_cmd, 0x00);
 	fu_lenovo_hid_data_set_reportid(lenovo_hid_data, 0x00);
 	if (!fu_lenovo_hid_data_set_cmd(lenovo_hid_data, lenovo_hid_cmd, error))
@@ -276,7 +270,7 @@ fu_lenovo_accessory_hid_command_dfu_file(FuHidrawDevice *hidraw_device,
 						  FU_LENOVO_ACCESSORY_COMMAND_CLASS_DFU_CLASS);
 	fu_lenovo_accessory_cmd_set_command_id(lenovo_hid_cmd,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_FILE |
-						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 8));
+						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 	fu_lenovo_accessory_cmd_set_flag_profile(lenovo_hid_cmd, 0x00);
 	fu_lenovo_hid_data_set_reportid(lenovo_hid_data, 0x00);
 	if (!fu_lenovo_hid_data_set_cmd(lenovo_hid_data, lenovo_hid_cmd, error))
