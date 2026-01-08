@@ -4491,7 +4491,7 @@ fu_firmware_dfu_patch_func(void)
 		     g_bytes_get_data(data_new, NULL),
 		     g_bytes_get_size(data_new),
 		     20,
-		     FU_DUMP_FLAGS_SHOW_ASCII | FU_DUMP_FLAGS_SHOW_ADDRESSES);
+		     FU_DUMP_FLAG_SHOW_ASCII | FU_DUMP_FLAG_SHOW_ADDRESSES);
 	csum = g_compute_checksum_for_bytes(G_CHECKSUM_SHA1, data_new);
 	g_assert_cmpstr(csum, ==, "676c039e8cb1d2f51831fcb77be36db24bb8ecf8");
 }
@@ -5430,271 +5430,223 @@ fu_security_attrs_compare_func(void)
 	g_assert_false(fu_security_attrs_equal(attrs2, attrs1));
 }
 
-typedef enum {
-	FU_FIRMWARE_BUILDER_FLAG_NONE,
-	FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE = 1 << 0,
-} G_GNUC_FLAG_ENUM FuFirmwareBuilderFlags;
-
 static void
 fu_firmware_builder_round_trip_func(void)
 {
 	struct {
-		GType gtype;
 		const gchar *xml_fn;
 		const gchar *checksum;
 		FuFirmwareBuilderFlags flags;
 	} map[] = {
 	    {
-		FU_TYPE_CAB_FIRMWARE,
 		"cab.builder.xml",
 		"a708f47b1a46377f1ea420597641ffe9a40abd75",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_CAB_FIRMWARE,
 		"cab-compressed.builder.xml",
 		NULL, /* not byte-identical */
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_ELF_FIRMWARE,
 		"elf.builder.xml",
 		"99ea60b8dd46085dcbf1ecd5e72b4cb73a3b6faa",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_DFUSE_FIRMWARE,
 		"dfuse.builder.xml",
 		"c1ff429f0e381c8fe8e1b2ee41a5a9a79e2f2ff7",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_PEFILE_FIRMWARE,
 		"pefile.builder.xml",
 		"73b0e0dc9f6175b7bc27b77f20e0d9eca2d2d141",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_LINEAR_FIRMWARE,
 		"linear.builder.xml",
 		"18fa8201652c82dc717df1905d8ab72e46e3d82b",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_HID_REPORT_ITEM,
 		"hid-report-item.builder.xml",
 		"5b18c07399fc8968ce22127df38d8d923089ec92",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_HID_DESCRIPTOR,
 		"hid-descriptor.builder.xml",
 		"6bb23f7c9fedc21f05528b3b63ad5837f4a16a92",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_SBATLEVEL_SECTION,
 		"sbatlevel.builder.xml",
 		"8204ef9477b4305748a0de6e667547cb6ce5e426",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_CSV_FIRMWARE,
 		"csv.builder.xml",
 		"986cbf8cde5bc7d8b49ee94cceae3f92efbd2eef",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_FDT_FIRMWARE,
 		"fdt.builder.xml",
 		"40f7fbaff684a6bcf67c81b3079422c2529741e1",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_FIT_FIRMWARE,
 		"fit.builder.xml",
 		"293ce07351bb7d76631c4e2ba47243db1e150f3c",
 		FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE,
 	    },
 	    {
-		FU_TYPE_SREC_FIRMWARE,
 		"srec.builder.xml",
 		"c8b405b7995d5934086c56b091a4c5df47b3b0d7",
 		FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE,
 	    },
 	    {
-		FU_TYPE_IHEX_FIRMWARE,
 		"ihex.builder.xml",
 		"e7c39355f1c87a3e9bf2195a406584c5dac828bc",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 #ifdef HAVE_CBOR
 	    {
-		FU_TYPE_FMAP_FIRMWARE,
 		"fmap.builder.xml",
 		"0db91efb987353ffb779d259b130d63d1b8bcbec",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 #endif
 	    {
-		FU_TYPE_EFI_LOAD_OPTION,
 		"efi-load-option.builder.xml",
 		"7ef696d22902ae97ef5f73ad9c85a28095ad56f1",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_LOAD_OPTION,
 		"efi-load-option-hive.builder.xml",
 		"76a378752b7ccdf3d68365d83784053356fa7e0a",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_LOAD_OPTION,
 		"efi-load-option-data.builder.xml",
 		"6e6190dc6b1bf45bc6e30ba7a6a98d891d692dd0",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EDID,
 		"edid.builder.xml",
 		"64cef10b75ccce684a483d576dd4a4ce6bef8165",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_SECTION,
 		"efi-section.builder.xml",
 		"a0ede7316209c536b50b6e5fb22cce8135153bc3",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_SECTION,
 		"efi-section.builder.xml",
 		"a0ede7316209c536b50b6e5fb22cce8135153bc3",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_FILE,
 		"efi-file.builder.xml",
 		"90374d97cf6bc70059d24c816c188c10bd250ed7",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_FILESYSTEM,
 		"efi-filesystem.builder.xml",
 		"d6fbadc1c303a3b4eede9db7fb0ddb353efffc86",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_SIGNATURE,
 		"efi-signature.builder.xml",
 		"ff7b862504262ce4853db29690b683bb06ce7d1f",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_SIGNATURE_LIST,
 		"efi-signature-list.builder.xml",
 		"450111ea0f77a0ede5b6a6305cd2e02b44b5f1e9",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_VARIABLE_AUTHENTICATION2,
 		"efi-variable-authentication2.builder.xml",
 		"bd08e81e9c86490dc1ffb32b1e3332606eb0fa97",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_FTW_STORE,
 		"efi-ftw-store.builder.xml",
 		"9bdb363e31e00d7fb0b42eacdc95771a3795b7ec",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_VSS_AUTH_VARIABLE,
 		"efi-vss-auth-variable.builder.xml",
 		"de6391f8b09653859b4ff93a7d5004c52c35d5c2",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_VSS2_VARIABLE_STORE,
 		"efi-vss2-variable-store.builder.xml",
 		"25ef7bf7ea600c8a739ff4dc6876bcd2f9d8d30d",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_VOLUME,
 		"efi-volume.builder.xml",
 		"d0f658bce79c8468458e0b64e7de24f45c063076",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_EFI_VOLUME,
 		"efi-volume-sized.builder.xml",
 		"d7087ea16218d700b9175a9cd0c27bd56b07a6d4",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_IFD_FIRMWARE,
 		"ifd.builder.xml",
 		"494e7be6a72e743e6738c0ecdbdcddbf27d1dbd7",
 		FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE,
 	    },
 	    {
-		FU_TYPE_CFU_OFFER,
 		"cfu-offer.builder.xml",
 		"c10223887ff6cdf4475ad07c65b1f0f3a2d0d5ca",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_CFU_PAYLOAD,
 		"cfu-payload.builder.xml",
 		"5da829f5fd15a28970aed98ebb26ebf2f88ed6f2",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_IFWI_CPD_FIRMWARE,
 		"ifwi-cpd.builder.xml",
 		"91e348d17cb91ef7a528e85beb39d15a0532dca5",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_IFWI_FPT_FIRMWARE,
 		"ifwi-fpt.builder.xml",
 		"d1f0fb2c2a7a99441bf4a825d060642315a94d91",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_OPROM_FIRMWARE,
 		"oprom.builder.xml",
 		"2e8387c1ef14ed4038e6bc637146b86b4d702fa8",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_INTEL_THUNDERBOLT_NVM,
 		"intel-thunderbolt.builder.xml",
 		"b3a73baf05078dfdd833b407a0a6afb239ec2f23",
 		FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE,
 	    },
 	    {
-		FU_TYPE_USB_BOS_DESCRIPTOR,
 		"usb-bos-descriptor.builder.xml",
 		"a305749853781c6899c4b28039cb4c7d9059b910",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_JSON_FIRMWARE,
 		"json.builder.xml",
 		"845be24c3f31c4e8f0feeadfe356b3156628ba99",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 #ifdef HAVE_CBOR
 	    {
-		FU_TYPE_USWID_FIRMWARE,
 		"uswid.builder.xml",
 		"b473fbdbe00f860c4da43f9499569394bac81f14",
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
 	    },
 	    {
-		FU_TYPE_USWID_FIRMWARE,
 		"uswid-compressed.builder.xml",
 		NULL, /* not byte-identical */
 		FU_FIRMWARE_BUILDER_FLAG_NONE,
@@ -5703,70 +5655,16 @@ fu_firmware_builder_round_trip_func(void)
 	};
 	for (guint i = 0; i < G_N_ELEMENTS(map); i++) {
 		gboolean ret;
-		g_autofree gchar *csum1 = NULL;
-		g_autofree gchar *csum2 = NULL;
 		g_autofree gchar *filename = NULL;
-		g_autofree gchar *xml1 = NULL;
-		g_autofree gchar *xml2 = NULL;
-		g_autoptr(FuFirmware) firmware1 = NULL;
-		g_autoptr(FuFirmware) firmware2 = NULL;
-		g_autoptr(FuFirmware) firmware3 = g_object_new(map[i].gtype, NULL);
 		g_autoptr(GError) error = NULL;
-		g_autoptr(GBytes) blob = NULL;
 
-		/* build and write */
-		g_debug("%s", map[i].xml_fn);
 		filename = g_test_build_filename(G_TEST_DIST, "tests", map[i].xml_fn, NULL);
-		ret = g_file_get_contents(filename, &xml1, NULL, &error);
+		ret = fu_firmware_roundtrip_from_filename(filename,
+							  map[i].checksum,
+							  map[i].flags,
+							  &error);
 		g_assert_no_error(error);
 		g_assert_true(ret);
-		firmware1 = fu_firmware_new_from_xml(xml1, &error);
-		g_assert_no_error(error);
-		g_assert_nonnull(firmware1);
-		csum1 = fu_firmware_get_checksum(firmware1, G_CHECKSUM_SHA1, &error);
-		g_assert_no_error(error);
-		g_assert_nonnull(csum1);
-		if (map[i].checksum != NULL)
-			g_assert_cmpstr(csum1, ==, map[i].checksum);
-
-		/* ensure we can write and then parse what we just wrote */
-		blob = fu_firmware_write(firmware1, &error);
-		g_assert_no_error(error);
-		g_assert_nonnull(blob);
-		ret = fu_firmware_parse_bytes(firmware3,
-					      blob,
-					      0x0,
-					      FU_FIRMWARE_PARSE_FLAG_NO_SEARCH |
-						  FU_FIRMWARE_PARSE_FLAG_CACHE_STREAM,
-					      &error);
-		if (!ret)
-			g_prefix_error(&error, "%s: ", map[i].xml_fn);
-		g_assert_no_error(error);
-		g_assert_true(ret);
-
-		/* ensure we can write back the binary blob */
-		if ((map[i].flags & FU_FIRMWARE_BUILDER_FLAG_NO_BINARY_COMPARE) == 0) {
-			g_autoptr(GBytes) blob2 = fu_firmware_write(firmware3, &error);
-			g_assert_nonnull(blob2);
-			g_assert_no_error(error);
-			ret = fu_bytes_compare(blob2, blob, &error);
-			if (!ret)
-				g_prefix_error(&error, "%s: ", map[i].xml_fn);
-			g_assert_no_error(error);
-			g_assert_true(ret);
-		}
-
-		/* ensure we can round-trip to XML */
-		xml2 = fu_firmware_export_to_xml(firmware1, FU_FIRMWARE_EXPORT_FLAG_NONE, &error);
-		g_assert_no_error(error);
-		firmware2 = fu_firmware_new_from_xml(xml2, &error);
-		g_assert_no_error(error);
-		g_assert_nonnull(firmware2);
-		csum2 = fu_firmware_get_checksum(firmware2, G_CHECKSUM_SHA1, &error);
-		g_assert_nonnull(csum2);
-		g_assert_no_error(error);
-		if (map[i].checksum != NULL)
-			g_assert_cmpstr(csum2, ==, map[i].checksum);
 	}
 }
 
@@ -6899,6 +6797,304 @@ fu_device_udev_func(void)
 	g_assert_cmpint(attrs->len, >, 10);
 }
 
+static gint
+fu_security_attrs_sort_cb(gconstpointer item1, gconstpointer item2)
+{
+	FwupdSecurityAttr *attr1 = *((FwupdSecurityAttr **)item1);
+	FwupdSecurityAttr *attr2 = *((FwupdSecurityAttr **)item2);
+	return g_strcmp0(fwupd_security_attr_get_appstream_id(attr1),
+			 fwupd_security_attr_get_appstream_id(attr2));
+}
+
+static void
+fu_security_attrs_minimize(FuSecurityAttrs *attrs)
+{
+	g_autoptr(GPtrArray) attrs_arr = fu_security_attrs_get_all_mutable(attrs);
+	for (guint i = 0; i < attrs_arr->len; i++) {
+		FwupdSecurityAttr *attr = g_ptr_array_index(attrs_arr, i);
+		fwupd_security_attr_set_url(attr, NULL);
+		fwupd_security_attr_set_plugin(attr, NULL);
+		fwupd_security_attr_set_fwupd_version(attr, NULL);
+		fwupd_security_attr_set_flags(attr, 0);
+		fwupd_security_attr_set_level(attr, 0);
+	}
+	g_ptr_array_sort(attrs_arr, fu_security_attrs_sort_cb);
+}
+
+static void
+fu_intel_me16_device_func(void)
+{
+	gboolean ret;
+	g_autofree gchar *str = NULL;
+	g_autoptr(FuContext) ctx = fu_context_new();
+	g_autoptr(FuIntelMeDevice) device = fu_intel_me_device_new(ctx);
+	g_autoptr(FuSecurityAttrs) attrs = fu_security_attrs_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts1 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts6 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts = NULL;
+	g_autoptr(GError) error = NULL;
+
+	st_hfsts = fu_intel_me_device_get_hfsts(device, 1);
+	g_assert_null(st_hfsts);
+
+	/*
+	 * ROG MAXIMUS Z790 HERO
+	 * Version:              16.1.32.2473
+	 * Family:               csme16
+	 * Issue:                not-vulnerable
+	 * Hfsts1:               0x90000245
+	 * Hfsts2:               0x39850106
+	 * Hfsts3:               0x20
+	 * Hfsts4:               0x4000
+	 * Hfsts6:               0x40200002
+	 */
+	fu_device_set_plugin(FU_DEVICE(device), "intel_me");
+	fu_device_set_version(FU_DEVICE(device), "16.1.32.2473");
+	g_assert_cmpint(fu_intel_me_device_get_family(device), ==, FU_INTEL_ME_FAMILY_CSME16);
+	g_assert_cmpint(fu_intel_me_device_get_issue(device), ==, FU_INTEL_ME_ISSUE_NOT_VULNERABLE);
+
+	fu_struct_intel_me_hfsts_set_value(st_hfsts1, 0x90000245);
+	fu_struct_intel_me_hfsts_set_value(st_hfsts6, 0x40200002);
+	fu_intel_me_device_set_hfsts(device, 1, st_hfsts1);
+	fu_intel_me_device_set_hfsts(device, 6, st_hfsts6);
+
+	fu_device_add_security_attrs(FU_DEVICE(device), attrs);
+	fu_security_attrs_depsolve(attrs);
+	fu_security_attrs_minimize(attrs);
+	str = fwupd_codec_to_json_string(FWUPD_CODEC(attrs), FWUPD_CODEC_FLAG_NONE, &error);
+	g_assert_no_error(error);
+	g_assert_nonnull(str);
+	g_print("%s\n", str);
+	ret = fu_test_compare_lines(
+	    str,
+	    "{\n"
+	    "  \"SecurityAttributes\": [\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Acm\",\n"
+	    "      \"HsiResult\": \"not-valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Enabled\",\n"
+	    "      \"HsiResult\": \"enabled\",\n"
+	    "      \"HsiResultSuccess\": \"enabled\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Otp\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Policy\",\n"
+	    "      \"HsiResult\": \"not-valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Verified\",\n"
+	    "      \"HsiResult\": \"not-valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.OverrideStrap\",\n"
+	    "      \"HsiResult\": \"locked\",\n"
+	    "      \"HsiResultSuccess\": \"locked\",\n"
+	    "      \"kind\": \"csme16\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.Version\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\",\n"
+	    "      \"kind\": \"csme16\",\n"
+	    "      \"version\": \"16.1.32.2473\"\n"
+	    "    }\n"
+	    "  ]\n"
+	    "}",
+	    &error);
+	g_assert_no_error(error);
+	g_assert_true(ret);
+}
+
+static void
+fu_intel_me18_device_func(void)
+{
+	gboolean ret;
+	g_autofree gchar *str = NULL;
+	g_autoptr(FuContext) ctx = fu_context_new();
+	g_autoptr(FuIntelMeDevice) device = fu_intel_me_device_new(ctx);
+	g_autoptr(FuSecurityAttrs) attrs = fu_security_attrs_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts1 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts5 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts6 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(GError) error = NULL;
+
+	/*
+	 * Dell XPS 13 9350
+	 * Version:              20.0.0.1322
+	 * Family:               csme18
+	 * Issue:                not-vulnerable
+	 * Hfsts1:               0xA4000255
+	 * Hfsts2:               0x80218500
+	 * Hfsts3:               0x30
+	 * Hfsts4:               0x4
+	 * Hfsts5:               0x2f61f03
+	 * Hfsts6:               0x0
+	 */
+	fu_device_set_plugin(FU_DEVICE(device), "intel_me");
+	fu_device_set_version(FU_DEVICE(device), "20.0.0.1322");
+	g_assert_cmpint(fu_intel_me_device_get_family(device), ==, FU_INTEL_ME_FAMILY_CSME18);
+	g_assert_cmpint(fu_intel_me_device_get_issue(device), ==, FU_INTEL_ME_ISSUE_NOT_VULNERABLE);
+
+	fu_struct_intel_me_hfsts_set_value(st_hfsts1, 0xA4000255);
+	fu_struct_intel_me_hfsts_set_value(st_hfsts5, 0x40200002);
+	fu_struct_intel_me_hfsts_set_value(st_hfsts6, 0x0);
+	fu_intel_me_device_set_hfsts(device, 1, st_hfsts1);
+	fu_intel_me_device_set_hfsts(device, 5, st_hfsts5);
+	fu_intel_me_device_set_hfsts(device, 6, st_hfsts6);
+
+	fu_device_add_security_attrs(FU_DEVICE(device), attrs);
+	fu_security_attrs_depsolve(attrs);
+	fu_security_attrs_minimize(attrs);
+	str = fwupd_codec_to_json_string(FWUPD_CODEC(attrs), FWUPD_CODEC_FLAG_NONE, &error);
+	g_assert_no_error(error);
+	g_assert_nonnull(str);
+	g_print("%s\n", str);
+	ret = fu_test_compare_lines(
+	    str,
+	    "{\n"
+	    "  \"SecurityAttributes\": [\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Acm\",\n"
+	    "      \"HsiResult\": \"not-valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Enabled\",\n"
+	    "      \"HsiResult\": \"enabled\",\n"
+	    "      \"HsiResultSuccess\": \"enabled\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Otp\",\n"
+	    "      \"HsiResult\": \"not-valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.ManufacturingMode\",\n"
+	    "      \"HsiResult\": \"not-locked\",\n"
+	    "      \"HsiResultSuccess\": \"locked\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.OverrideStrap\",\n"
+	    "      \"HsiResult\": \"locked\",\n"
+	    "      \"HsiResultSuccess\": \"locked\",\n"
+	    "      \"kind\": \"csme18\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.Version\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\",\n"
+	    "      \"kind\": \"csme18\",\n"
+	    "      \"version\": \"20.0.0.1322\"\n"
+	    "    }\n"
+	    "  ]\n"
+	    "}",
+	    &error);
+	g_assert_no_error(error);
+	g_assert_true(ret);
+}
+
+static void
+fu_intel_me16_device_hap_func(void)
+{
+	gboolean ret;
+	g_autofree gchar *str = NULL;
+	g_autoptr(FuContext) ctx = fu_context_new();
+	g_autoptr(FuIntelMeDevice) device = fu_intel_me_device_new(ctx);
+	g_autoptr(FuSecurityAttrs) attrs = fu_security_attrs_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts1 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts5 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(FuStructIntelMeHfsts) st_hfsts6 = fu_struct_intel_me_hfsts_new();
+	g_autoptr(GError) error = NULL;
+
+	/*
+	 * Alder Lake-P HAP set, Boot Guard enabled, fused (no manufacturing mode)
+	 * Version:              16.0.0.0
+	 * Family:               csme17
+	 * Issue:                not-vulnerable
+	 * Hfsts1:               0x80022054
+	 * Hfsts2:               0x30284106
+	 * Hfsts3:               0x00000020
+	 * Hfsts4:               0x00006000
+	 * Hfsts5:               0x00001f03
+	 * Hfsts6:               0xc46003cf
+	 */
+	fu_device_set_plugin(FU_DEVICE(device), "intel_me");
+	fu_device_set_version(FU_DEVICE(device), "16.0.0.0");
+	g_assert_cmpint(fu_intel_me_device_get_family(device), ==, FU_INTEL_ME_FAMILY_CSME16);
+	g_assert_cmpint(fu_intel_me_device_get_issue(device), ==, FU_INTEL_ME_ISSUE_NOT_VULNERABLE);
+
+	fu_struct_intel_me_hfsts_set_value(st_hfsts1, 0x80022054);
+	fu_struct_intel_me_hfsts_set_value(st_hfsts5, 0x00001f03);
+	fu_struct_intel_me_hfsts_set_value(st_hfsts6, 0xc46003cf);
+	fu_intel_me_device_set_hfsts(device, 1, st_hfsts1);
+	fu_intel_me_device_set_hfsts(device, 5, st_hfsts5);
+	fu_intel_me_device_set_hfsts(device, 6, st_hfsts6);
+
+	fu_device_add_security_attrs(FU_DEVICE(device), attrs);
+	fu_security_attrs_depsolve(attrs);
+	fu_security_attrs_minimize(attrs);
+	str = fwupd_codec_to_json_string(FWUPD_CODEC(attrs), FWUPD_CODEC_FLAG_NONE, &error);
+	g_assert_no_error(error);
+	g_assert_nonnull(str);
+	g_print("%s\n", str);
+	ret = fu_test_compare_lines(
+	    str,
+	    "{\n"
+	    "  \"SecurityAttributes\": [\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Acm\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Enabled\",\n"
+	    "      \"HsiResult\": \"enabled\",\n"
+	    "      \"HsiResultSuccess\": \"enabled\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Otp\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Policy\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.IntelBootguard.Verified\",\n"
+	    "      \"HsiResult\": \"valid\",\n"
+	    "      \"HsiResultSuccess\": \"valid\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.OverrideStrap\",\n"
+	    "      \"HsiResult\": \"locked\",\n"
+	    "      \"HsiResultSuccess\": \"locked\",\n"
+	    "      \"kind\": \"csme16\"\n"
+	    "    },\n"
+	    "    {\n"
+	    "      \"AppstreamId\": \"org.fwupd.hsi.Mei.Version\",\n"
+	    "      \"HsiResult\": \"not-enabled\",\n"
+	    "      \"HsiResultSuccess\": \"valid\",\n"
+	    "      \"kind\": \"csme16\",\n"
+	    "      \"version\": \"16.0.0.0\"\n"
+	    "    }\n"
+	    "  ]\n"
+	    "}",
+	    &error);
+	g_assert_no_error(error);
+	g_assert_true(ret);
+}
+
 static void
 fu_cab_checksum_func(void)
 {
@@ -7184,16 +7380,20 @@ fu_plugin_struct_func(void)
 
 	/* to string */
 	str2 = fu_struct_self_test_to_string(st);
-	g_assert_cmpstr(str2,
-			==,
-			"FuStructSelfTest:\n"
-			"  length: 0xdead\n"
-			"  revision: 0xff [all]\n"
-			"  owner: 00000000-0000-0000-0000-000000000000\n"
-			"  oem_table_id: X\n"
-			"  oem_revision: 0x0\n"
-			"  asl_compiler_id: 0xDFDFDFDF\n"
-			"  asl_compiler_revision: 0x0");
+	ret = fu_test_compare_lines(str2,
+				    "FuStructSelfTest:\n"
+				    "  signature: 0x12345678\n"
+				    "  length: 0xdead\n"
+				    "  revision: 0xff [all]\n"
+				    "  owner: 00000000-0000-0000-0000-000000000000\n"
+				    "  oem_id: ABCDEF\n"
+				    "  oem_table_id: X\n"
+				    "  oem_revision: 0x0\n"
+				    "  asl_compiler_id: 0xDFDFDFDF\n"
+				    "  asl_compiler_revision: 0x0",
+				    &error);
+	g_assert_no_error(error);
+	g_assert_true(ret);
 
 	/* parse failing signature */
 	st->buf->data[0] = 0xFF;
@@ -7255,18 +7455,22 @@ fu_plugin_struct_wrapped_func(void)
 	/* to string */
 	str2 = fu_struct_self_test_wrapped_to_string(st);
 	g_debug("%s", str2);
-	g_assert_cmpstr(str2,
-			==,
-			"FuStructSelfTestWrapped:\n"
-			"  less: 0x99\n"
-			"  base: FuStructSelfTest:\n"
-			"  length: 0x3b\n"
-			"  revision: 0xfe\n"
-			"  owner: 00000000-0000-0000-0000-000000000000\n"
-			"  oem_revision: 0x0\n"
-			"  asl_compiler_id: 0xDFDFDFDF\n"
-			"  asl_compiler_revision: 0x0\n"
-			"  more: 0x12");
+	fu_test_compare_lines(str2,
+			      "FuStructSelfTestWrapped:\n"
+			      "  less: 0x99\n"
+			      "  base: FuStructSelfTest:\n"
+			      "  signature: 0x12345678\n"
+			      "  length: 0x3b\n"
+			      "  revision: 0xfe\n"
+			      "  owner: 00000000-0000-0000-0000-000000000000\n"
+			      "  oem_id: ABCDEF\n"
+			      "  oem_revision: 0x0\n"
+			      "  asl_compiler_id: 0xDFDFDFDF\n"
+			      "  asl_compiler_revision: 0x0\n"
+			      "  more: 0x12",
+			      &error);
+	g_assert_no_error(error);
+	g_assert_true(ret);
 
 	/* parse failing signature */
 	st->buf->data[FU_STRUCT_SELF_TEST_WRAPPED_OFFSET_BASE] = 0xFF;
@@ -7399,6 +7603,7 @@ main(int argc, char **argv)
 
 	/* register all the GTypes manually */
 	fu_context_add_firmware_gtypes(ctx);
+	g_type_ensure(FU_TYPE_USB_BOS_DESCRIPTOR);
 
 	g_test_add_func("/fwupd/cab{checksum}", fu_cab_checksum_func);
 	g_test_add_func("/fwupd/efi-lz77{decompressor}", fu_efi_lz77_decompressor_func);
@@ -7576,5 +7781,8 @@ main(int argc, char **argv)
 	g_test_add_func("/fwupd/device{retry-hardware}", fu_device_retry_hardware_func);
 	g_test_add_func("/fwupd/device{cfi-device}", fu_device_cfi_device_func);
 	g_test_add_func("/fwupd/device{progress}", fu_plugin_device_progress_func);
+	g_test_add_func("/fwupd/intel-me16-device", fu_intel_me16_device_func);
+	g_test_add_func("/fwupd/intel-me16-device{hap}", fu_intel_me16_device_hap_func);
+	g_test_add_func("/fwupd/intel-me18-device", fu_intel_me18_device_func);
 	return g_test_run();
 }

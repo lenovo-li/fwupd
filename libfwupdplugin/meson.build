@@ -7,11 +7,13 @@ fwupdplugin_structs = [
   'fu-cab.rs', # fuzzing
   'fu-cfi.rs', # fuzzing
   'fu-cfu-firmware.rs', # fuzzing
+  'fu-config.rs', # fuzzing
   'fu-coswid.rs', # fuzzing
   'fu-context.rs', # fuzzing
   'fu-device.rs', # fuzzing
   'fu-dfu-firmware.rs', # fuzzing
   'fu-dpaux.rs', # fuzzing
+  'fu-dump.rs', # fuzzing
   'fu-edid.rs', # fuzzing
   'fu-efi.rs', # fuzzing
   'fu-elf.rs', # fuzzing
@@ -19,19 +21,24 @@ fwupdplugin_structs = [
   'fu-firmware.rs', # fuzzing
   'fu-fmap.rs', # fuzzing
   'fu-hid.rs', # fuzzing
-  'fu-hidraw.rs', # fuzzing
   'fu-ifd.rs', # fuzzing
   'fu-ifwi.rs', # fuzzing
   'fu-ihex.rs', # fuzzing
+  'fu-intel-me.rs', # fuzzing
   'fu-intel-thunderbolt.rs', # fuzzing
   'fu-io-channel.rs', # fuzzing
+  'fu-ioctl.rs', # fuzzing
   'fu-heci.rs', # fuzzing
   'fu-msgpack.rs', # fuzzing
   'fu-oprom.rs', # fuzzing
+  'fu-path.rs', # fuzzing
   'fu-pefile.rs', # fuzzing
   'fu-pci.rs', # fuzzing
+  'fu-quirks.rs', # fuzzing
   'fu-sbatlevel-section.rs', # fuzzing
+  'fu-security-attrs.rs', # fuzzing
   'fu-smbios.rs', # fuzzing
+  'fu-srec.rs', # fuzzing
   'fu-usb-device-ds20.rs', # fuzzing
   'fu-usb.rs', # fuzzing
   'fu-uswid.rs', # fuzzing
@@ -150,6 +157,7 @@ fwupdplugin_src = [
   'fu-ifwi-fpt-firmware.c', # fuzzing
   'fu-ihex-firmware.c', # fuzzing
   'fu-input-stream.c', # fuzzing
+  'fu-intel-me-device.c', # fuzzing
   'fu-intel-thunderbolt-firmware.c', # fuzzing
   'fu-intel-thunderbolt-nvm.c', # fuzzing
   'fu-io-channel.c', # fuzzing
@@ -178,7 +186,7 @@ fwupdplugin_src = [
   'fu-quirks.c', # fuzzing
   'fu-sbatlevel-section.c', # fuzzing
   'fu-security-attr.c', # fuzzing
-  'fu-security-attrs.c',
+  'fu-security-attrs.c', # fuzzing
   'fu-serio-device.c',
   'fu-smbios.c', # fuzzing
   'fu-srec-firmware.c', # fuzzing
@@ -302,6 +310,7 @@ fwupdplugin_headers = [
   'fu-ifwi-fpt-firmware.h',
   'fu-ihex-firmware.h',
   'fu-input-stream.h',
+  'fu-intel-me-device.h',
   'fu-intel-thunderbolt-firmware.h',
   'fu-intel-thunderbolt-nvm.h',
   'fu-io-channel.h',
@@ -372,7 +381,6 @@ pkgg_requires = [
   'gmodule-2.0',
   'gobject-2.0',
   'fwupd',
-  'json-glib-1.0',
   'libarchive',
   'xmlb',
   'libusb',
@@ -381,7 +389,6 @@ pkgg_requires = [
 library_deps = [
   introspection_deps,
   gmodule,
-  libjsonglib,
   zlib,
   valgrind,
   lzma,

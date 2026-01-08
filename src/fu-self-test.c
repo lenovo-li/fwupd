@@ -1610,12 +1610,6 @@ fu_engine_plugin_gtypes_func(gconstpointer user_data)
 	g_autoptr(GArray) firmware_gtypes = NULL;
 	g_autoptr(GError) error = NULL;
 	g_autoptr(XbSilo) silo_empty = xb_silo_new();
-	const gchar *plugin_names_safe[] = {
-	    "linux_lockdown",
-	    "linux_sleep",
-	    "linux_swap",
-	    "linux_tainted",
-	};
 	const gchar *external_plugins[] = {
 	    "flashrom",
 	    "modem-manager",
@@ -1652,14 +1646,12 @@ fu_engine_plugin_gtypes_func(gconstpointer user_data)
 	g_assert_nonnull(plugins);
 	g_assert_cmpint(plugins->len, >, 5);
 
-	/* start up some "safe" plugins */
-	for (guint i = 0; i < G_N_ELEMENTS(plugin_names_safe); i++) {
-		FuPlugin *plugin = fu_engine_get_plugin_by_name(engine, plugin_names_safe[i], NULL);
-		if (plugin != NULL) {
-			ret = fu_plugin_runner_startup(plugin, progress, &error);
-			g_assert_no_error(error);
-			g_assert_true(ret);
-		}
+	/* start up plugins */
+	for (guint i = 0; i < plugins->len; i++) {
+		FuPlugin *plugin = g_ptr_array_index(plugins, i);
+		g_autoptr(GError) error_local = NULL;
+		if (!fu_plugin_runner_startup(plugin, progress, &error_local))
+			g_debug("ignoring: %s", error_local->message);
 	}
 
 	/* add security attrs where possible */
@@ -1674,6 +1666,46 @@ fu_engine_plugin_gtypes_func(gconstpointer user_data)
 		g_autoptr(FuDevice) device_nop = fu_device_new(self->ctx);
 		g_autoptr(GError) error_local = NULL;
 		if (!fu_plugin_runner_reboot_cleanup(plugin, device_nop, &error_local))
+			g_debug("ignoring: %s", error_local->message);
+	}
+
+	/* run the composite-prepare action */
+	for (guint i = 0; i < plugins->len; i++) {
+		FuPlugin *plugin = g_ptr_array_index(plugins, i);
+		g_autoptr(FuDevice) device_nop = fu_device_new(self->ctx);
+		g_autoptr(GError) error_local = NULL;
+		g_autoptr(GPtrArray) devices = g_ptr_array_new();
+		g_ptr_array_add(devices, device_nop);
+		if (!fu_plugin_runner_composite_prepare(plugin, devices, &error_local))
+			g_debug("ignoring: %s", error_local->message);
+	}
+
+	/* run the composite-cleanup action */
+	for (guint i = 0; i < plugins->len; i++) {
+		FuPlugin *plugin = g_ptr_array_index(plugins, i);
+		g_autoptr(FuDevice) device_nop = fu_device_new(self->ctx);
+		g_autoptr(GError) error_local = NULL;
+		g_autoptr(GPtrArray) devices = g_ptr_array_new();
+		g_ptr_array_add(devices, device_nop);
+		if (!fu_plugin_runner_composite_cleanup(plugin, devices, &error_local))
+			g_debug("ignoring: %s", error_local->message);
+	}
+
+	/* run the composite-peek-firmware action */
+	for (guint i = 0; i < plugins->len; i++) {
+		FuPlugin *plugin = g_ptr_array_index(plugins, i);
+		g_autoptr(GBytes) blob = g_bytes_new_static("xxx", 3);
+		g_autoptr(FuDevice) device_nop = fu_device_new(self->ctx);
+		g_autoptr(FuFirmware) firmware = fu_firmware_new_from_bytes(blob);
+		g_autoptr(GError) error_local = NULL;
+
+		fu_device_set_plugin(device_nop, "uefi_dbx");
+		if (!fu_plugin_runner_composite_peek_firmware(plugin,
+							      device_nop,
+							      firmware,
+							      progress,
+							      FWUPD_INSTALL_FLAG_NONE,
+							      &error_local))
 			g_debug("ignoring: %s", error_local->message);
 	}
 
@@ -8281,6 +8313,7 @@ main(int argc, char **argv)
 	/* do not save silo */
 	self->ctx = fu_context_new();
 	fu_context_add_flag(self->ctx, FU_CONTEXT_FLAG_NO_IDLE_SOURCES);
+	fu_context_add_flag(self->ctx, FU_CONTEXT_FLAG_FDE_SNAPD);
 	ret = fu_context_load_quirks(self->ctx, FU_QUIRKS_LOAD_FLAG_NO_CACHE, &error);
 	g_assert_no_error(error);
 	g_assert_true(ret);
