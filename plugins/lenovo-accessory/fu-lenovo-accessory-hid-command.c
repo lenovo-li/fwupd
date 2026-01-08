@@ -22,48 +22,74 @@ my_manual_dump(const gchar *title, const guint8 *data, gsize len)
 }*/
 
 static gboolean
+fu_lenovo_accessory_hid_command_poll_cb(FuDevice *device, gpointer user_data, GError **error)
+{
+	FuHidrawDevice *hidraw_device = FU_HIDRAW_DEVICE(device);
+	GByteArray *st_buf = (GByteArray *)user_data;
+	g_autofree guint8 *rsp = g_malloc0(st_buf->len);
+	guint8 status;
+	if (!fu_hidraw_device_get_feature(hidraw_device,
+					  rsp,
+					  st_buf->len,
+					  FU_IOCTL_FLAG_NONE,
+					  error))
+		return FALSE;
+	status = rsp[1] & 0x0F;
+	if (status == FU_LENOVO_STATUS_COMMAND_SUCCESSFUL) {
+		if (!fu_memcpy_safe(st_buf->data,
+				    st_buf->len,
+				    0,
+				    rsp,
+				    st_buf->len,
+				    0,
+				    st_buf->len,
+				    error))
+			return FALSE;
+		return TRUE;
+	}
+	if (status == FU_LENOVO_STATUS_COMMAND_BUSY) {
+		g_set_error_literal(error, FWUPD_ERROR, FWUPD_ERROR_BUSY, "command busy");
+		return FALSE;
+	}
+	g_set_error(error,
+		    FWUPD_ERROR,
+		    FWUPD_ERROR_WRITE,
+		    "command failed with status 0x%02x",
+		    status);
+	return FALSE;
+}
+
+static gboolean
 fu_lenovo_accessory_hid_command_process(FuHidrawDevice *hidraw_device,
 					guint8 *req,
 					gsize req_sz,
 					FuIoctlFlags flags,
 					GError **error)
 {
-	g_autofree guint8 *rsp = g_malloc0(req_sz);
-	guint retries = 5;
-	guint8 status = 0;
-	/* send request to the device using a SetFeature report */
-	/*my_manual_dump("DEBUG WRITE", req, req_sz);*/
-	if (!fu_hidraw_device_set_feature(hidraw_device, req, req_sz, flags, error))
+	g_autoptr(GByteArray) st_buf = g_byte_array_new_take(req, req_sz);
+	if (!fu_hidraw_device_set_feature(hidraw_device, req, req_sz, flags, error)) {
+		g_byte_array_steal(st_buf, NULL);
 		return FALSE;
-	/* poll the device until the command is processed or we timeout */
-	while (retries--) {
-		/* get response using a GetFeature report */
-		if (!fu_hidraw_device_get_feature(hidraw_device, rsp, req_sz, flags, error))
-			return FALSE;
-		/*my_manual_dump("DEBUG READ",rsp, req_sz);*/
-		status = rsp[1] & 0x0F;
-		if (status == FU_LENOVO_STATUS_COMMAND_SUCCESSFUL) {
-			if (!fu_memcpy_safe(req, req_sz, 0, rsp, req_sz, 0, req_sz, error))
-				return FALSE;
-			return TRUE;
-		}
-		if (status != FU_LENOVO_STATUS_COMMAND_BUSY) {
-			g_set_error(error,
-				    FWUPD_ERROR,
-				    FWUPD_ERROR_WRITE,
-				    "command failed with status 0x%02x",
-				    status);
-			return FALSE;
-		}
-		/* wait 10ms before retrying */
-		g_usleep(10 * 1000);
 	}
-
-	g_set_error_literal(error,
-			    FWUPD_ERROR,
-			    FWUPD_ERROR_WRITE,
-			    "command timeout (device always busy)");
-	return FALSE;
+	if (!fu_device_retry_full(FU_DEVICE(hidraw_device),
+				  fu_lenovo_accessory_hid_command_poll_cb,
+				  5,
+				  10,
+				  st_buf,
+				  error)) {
+		g_byte_array_steal(st_buf, NULL);
+		if (g_error_matches(*error, FWUPD_ERROR, FWUPD_ERROR_BUSY)) {
+			g_clear_error(error);
+			g_set_error_literal(error,
+					    FWUPD_ERROR,
+					    FWUPD_ERROR_WRITE,
+					    "command timeout (device always busy)");
+			return FALSE;
+		}
+		return FALSE;
+	}
+	g_byte_array_steal(st_buf, NULL);
+	return TRUE;
 }
 
 gboolean

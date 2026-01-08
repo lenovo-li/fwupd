@@ -25,52 +25,49 @@ my_manual_dump(const gchar *title, const guint8 *data, gsize len)
 }*/
 
 static gboolean
+fu_lenovo_accessory_ble_command_poll_cb(FuDevice *device, gpointer user_data, GError **error)
+{
+	FuBluezDevice *ble_device = FU_BLUEZ_DEVICE(device);
+	GByteArray *buffer = (GByteArray *)user_data;
+	g_autoptr(GByteArray) res = NULL;
+	guint8 status;
+	res = fu_bluez_device_read(ble_device, UUID_READ, error);
+	if (res == NULL)
+		return FALSE;
+	if (res->len < 1) {
+		g_set_error_literal(error, FWUPD_ERROR, FWUPD_ERROR_READ, "received empty data");
+		return FALSE;
+	}
+	status = res->data[0] & 0x0F;
+	if (status == FU_LENOVO_STATUS_COMMAND_SUCCESSFUL) {
+		g_byte_array_set_size(buffer, 0);
+		g_byte_array_append(buffer, res->data, res->len);
+		return TRUE;
+	}
+	if (status == FU_LENOVO_STATUS_COMMAND_BUSY) {
+		g_set_error_literal(error, FWUPD_ERROR, FWUPD_ERROR_BUSY, "command busy");
+		return FALSE;
+	}
+	g_set_error(error, FWUPD_ERROR, FWUPD_ERROR_WRITE, "command failed: 0x%02x", status);
+	return FALSE;
+}
+
+static gboolean
 fu_lenovo_accessory_ble_command_process(FuBluezDevice *ble_device,
 					GByteArray *buffer,
 					FuIoctlFlags flags,
 					GError **error)
 {
-	guint retries = 50;
-	/*my_manual_dump("DEBUG WRITE", buffer->data, buffer->len);*/
 	if (!fu_bluez_device_write(ble_device, UUID_WRITE, buffer, error)) {
 		g_prefix_error_literal(error, "failed to write cmd: ");
 		return FALSE;
 	}
-
-	while (retries--) {
-		guint8 status = 0;
-		g_autoptr(GByteArray) res = fu_bluez_device_read(ble_device, UUID_READ, error);
-		if (res == NULL)
-			return FALSE;
-		/*my_manual_dump("DEBUG READ", res->data, res->len);*/
-		if (res->len < 1) {
-			g_set_error_literal(error,
-					    FWUPD_ERROR,
-					    FWUPD_ERROR_READ,
-					    "received empty data");
-			return FALSE;
-		}
-
-		status = res->data[0] & 0x0F;
-
-		if (status == FU_LENOVO_STATUS_COMMAND_SUCCESSFUL) {
-			g_byte_array_set_size(buffer, 0);
-			g_byte_array_append(buffer, res->data, res->len);
-			return TRUE;
-		}
-
-		if (status != FU_LENOVO_STATUS_COMMAND_BUSY) {
-			g_set_error(error,
-				    FWUPD_ERROR,
-				    FWUPD_ERROR_WRITE,
-				    "command failed with status 0x%02x",
-				    status);
-			return FALSE;
-		}
-		g_usleep(10 * 1000);
-	}
-	g_set_error_literal(error, FWUPD_ERROR, FWUPD_ERROR_WRITE, "timeout (busy)");
-	return FALSE;
+	return fu_device_retry_full(FU_DEVICE(ble_device),
+				    fu_lenovo_accessory_ble_command_poll_cb,
+				    50,	    /* count */
+				    10,	    /* delay in ms */
+				    buffer, /* user_data */
+				    error);
 }
 
 gboolean
