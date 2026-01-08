@@ -80,10 +80,8 @@ fu_lenovo_accessory_ble_command_fwversion(FuBluezDevice *ble_device,
 					  guint8 *internal,
 					  GError **error)
 {
-	gsize bufz = 0;
-	const guint8 *receive_data = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleFwVersion) lenovo_ble_fwversion = fu_lenovo_ble_fw_version_new();
 	fu_lenovo_accessory_cmd_set_target_status(lenovo_hid_cmd, 0x00);
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x03);
 	fu_lenovo_accessory_cmd_set_command_class(
@@ -94,28 +92,19 @@ fu_lenovo_accessory_ble_command_fwversion(FuBluezDevice *ble_device,
 						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_GET << 7));
 	fu_lenovo_accessory_cmd_set_flag_profile(lenovo_hid_cmd, 0x00);
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+	if (!fu_lenovo_ble_fw_version_set_cmd(lenovo_ble_fwversion, lenovo_hid_cmd, error))
 		return FALSE;
 	if (!fu_lenovo_accessory_ble_command_process(ble_device,
-						     lenovo_ble_data->buf,
+						     lenovo_ble_fwversion->buf,
 						     FU_IOCTL_FLAG_RETRY,
 						     error))
 		return FALSE;
-	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufz);
-	if (receive_data == NULL || bufz < 3) {
-		g_set_error_literal(error,
-				    FWUPD_ERROR,
-				    FWUPD_ERROR_READ,
-				    "invalid response length");
-		return FALSE;
-	}
-
 	if (major != NULL)
-		*major = receive_data[0];
+		*major = fu_lenovo_ble_fw_version_get_major(lenovo_ble_fwversion);
 	if (minor != NULL)
-		*minor = receive_data[1];
+		*minor = fu_lenovo_ble_fw_version_get_minor(lenovo_ble_fwversion);
 	if (internal != NULL)
-		*internal = receive_data[2];
+		*internal = fu_lenovo_ble_fw_version_get_internal(lenovo_ble_fwversion);
 	return TRUE;
 }
 
@@ -124,10 +113,8 @@ fu_lenovo_accessory_ble_command_get_devicemode(FuBluezDevice *ble_device,
 					       guint8 *mode,
 					       GError **error)
 {
-	gsize bufsz = 0;
-	const guint8 *receive_data = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleDevicemode) lenovo_ble_mode = fu_lenovo_ble_devicemode_new();
 
 	fu_lenovo_accessory_cmd_set_target_status(lenovo_hid_cmd, 0x00);
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x01);
@@ -138,18 +125,15 @@ fu_lenovo_accessory_ble_command_get_devicemode(FuBluezDevice *ble_device,
 					       FU_LENOVO_ACCESSORY_INFO_ID_DEVICE_MODE |
 						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+	if (!fu_lenovo_ble_devicemode_set_cmd(lenovo_ble_mode, lenovo_hid_cmd, error))
 		return FALSE;
 	if (!fu_lenovo_accessory_ble_command_process(ble_device,
-						     lenovo_ble_data->buf,
+						     lenovo_ble_mode->buf,
 						     FU_IOCTL_FLAG_RETRY,
 						     error)) {
 		return FALSE;
 	}
-	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufsz);
-	if (receive_data == NULL || bufsz == 0)
-		return FALSE;
-	*mode = receive_data[0];
+	*mode = fu_lenovo_ble_devicemode_get_mode(lenovo_ble_mode);
 	return TRUE;
 }
 
@@ -218,10 +202,8 @@ fu_lenovo_accessory_ble_command_dfu_attribute(FuBluezDevice *ble_device,
 					      guint32 *page_size,
 					      GError **error)
 {
-	gsize bufz = 0;
-	const guint8 *receive_data = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleDfuAttribute) lenovo_ble_attribute = fu_lenovo_ble_dfu_attribute_new();
 
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x0D);
 	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
@@ -230,36 +212,27 @@ fu_lenovo_accessory_ble_command_dfu_attribute(FuBluezDevice *ble_device,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_ATTRIBUTE |
 						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_GET << 7));
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+	if (!fu_lenovo_ble_dfu_attribute_set_cmd(lenovo_ble_attribute, lenovo_hid_cmd, error))
 		return FALSE;
 
 	if (!fu_lenovo_accessory_ble_command_process(ble_device,
-						     lenovo_ble_data->buf,
+						     lenovo_ble_attribute->buf,
 						     FU_IOCTL_FLAG_RETRY,
 						     error))
 		return FALSE;
 
-	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufz);
-	if (receive_data == NULL || bufz < 13) {
-		g_set_error_literal(error,
-				    FWUPD_ERROR,
-				    FWUPD_ERROR_READ,
-				    "invalid attribute length");
-		return FALSE;
-	}
-
 	if (major_ver != NULL)
-		*major_ver = receive_data[0];
+		*major_ver = fu_lenovo_ble_dfu_attribute_get_major_ver(lenovo_ble_attribute);
 	if (minor_ver != NULL)
-		*minor_ver = receive_data[1];
+		*minor_ver = fu_lenovo_ble_dfu_attribute_get_minor_ver(lenovo_ble_attribute);
 	if (product_pid != NULL)
-		*product_pid = fu_memread_uint16(receive_data + 2, G_BIG_ENDIAN);
+		*product_pid = fu_lenovo_ble_dfu_attribute_get_product_pid(lenovo_ble_attribute);
 	if (processor_id != NULL)
-		*processor_id = receive_data[4];
+		*processor_id = fu_lenovo_ble_dfu_attribute_get_processor_id(lenovo_ble_attribute);
 	if (app_max_size != NULL)
-		*app_max_size = fu_memread_uint32(receive_data + 5, G_BIG_ENDIAN);
+		*app_max_size = fu_lenovo_ble_dfu_attribute_get_app_max_size(lenovo_ble_attribute);
 	if (page_size != NULL)
-		*page_size = fu_memread_uint32(receive_data + 9, G_BIG_ENDIAN);
+		*page_size = fu_lenovo_ble_dfu_attribute_get_page_size(lenovo_ble_attribute);
 
 	return TRUE;
 }
@@ -272,9 +245,8 @@ fu_lenovo_accessory_ble_command_dfu_prepare(FuBluezDevice *ble_device,
 					    guint32 crc32,
 					    GError **error)
 {
-	guint8 send_data[13] = {0};
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleDfuPrepare) lenovo_ble_prepare = fu_lenovo_ble_dfu_prepare_new();
 
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x0D);
 	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
@@ -283,19 +255,14 @@ fu_lenovo_accessory_ble_command_dfu_prepare(FuBluezDevice *ble_device,
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_PREPARE |
 						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_SET << 7));
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+	if (!fu_lenovo_ble_dfu_prepare_set_cmd(lenovo_ble_prepare, lenovo_hid_cmd, error))
 		return FALSE;
-
-	send_data[0] = file_type;
-	fu_memwrite_uint32(send_data + 1, start_address, G_BIG_ENDIAN);
-	fu_memwrite_uint32(send_data + 5, end_address, G_BIG_ENDIAN);
-	fu_memwrite_uint32(send_data + 9, crc32, G_BIG_ENDIAN);
-
-	if (!fu_lenovo_ble_data_set_data(lenovo_ble_data, send_data, 13, error))
-		return FALSE;
-
+	fu_lenovo_ble_dfu_prepare_set_file_type(lenovo_ble_prepare, file_type);
+	fu_lenovo_ble_dfu_prepare_set_start_address(lenovo_ble_prepare, start_address);
+	fu_lenovo_ble_dfu_prepare_set_end_address(lenovo_ble_prepare, end_address);
+	fu_lenovo_ble_dfu_prepare_set_crc32(lenovo_ble_prepare, crc32);
 	return fu_lenovo_accessory_ble_command_process(ble_device,
-						       lenovo_ble_data->buf,
+						       lenovo_ble_prepare->buf,
 						       FU_IOCTL_FLAG_RETRY,
 						       error);
 }
@@ -334,10 +301,8 @@ fu_lenovo_accessory_ble_command_dfu_file(FuBluezDevice *ble_device,
 gboolean
 fu_lenovo_accessory_ble_command_dfu_crc(FuBluezDevice *ble_device, guint32 *crc32, GError **error)
 {
-	gsize bufz = 0;
-	const guint8 *receive_data = NULL;
 	g_autoptr(FuLenovoAccessoryCmd) lenovo_hid_cmd = fu_lenovo_accessory_cmd_new();
-	g_autoptr(FuLenovoBleData) lenovo_ble_data = fu_lenovo_ble_data_new();
+	g_autoptr(FuLenovoBleDfuCrc) lenovo_ble_crc = fu_lenovo_ble_dfu_crc_new();
 
 	fu_lenovo_accessory_cmd_set_data_size(lenovo_hid_cmd, 0x05);
 	fu_lenovo_accessory_cmd_set_command_class(lenovo_hid_cmd,
@@ -346,24 +311,15 @@ fu_lenovo_accessory_ble_command_dfu_crc(FuBluezDevice *ble_device, guint32 *crc3
 					       FU_LENOVO_ACCESSORY_DFU_ID_DFU_CRC |
 						   (FU_LENOVO_ACCESSORY_CMD_DIR_CMD_GET << 7));
 
-	if (!fu_lenovo_ble_data_set_cmd(lenovo_ble_data, lenovo_hid_cmd, error))
+	if (!fu_lenovo_ble_dfu_crc_set_cmd(lenovo_ble_crc, lenovo_hid_cmd, error))
 		return FALSE;
 	if (!fu_lenovo_accessory_ble_command_process(ble_device,
-						     lenovo_ble_data->buf,
+						     lenovo_ble_crc->buf,
 						     FU_IOCTL_FLAG_RETRY,
 						     error))
 		return FALSE;
-
-	receive_data = fu_lenovo_ble_data_get_data(lenovo_ble_data, &bufz);
-	if (receive_data == NULL || bufz < 4) {
-		g_set_error_literal(error,
-				    FWUPD_ERROR,
-				    FWUPD_ERROR_READ,
-				    "invalid attribute length");
-		return FALSE;
-	}
 	if (crc32 != NULL)
-		*crc32 = fu_memread_uint32(receive_data, G_BIG_ENDIAN);
+		*crc32 = fu_lenovo_ble_dfu_crc_get_crc32(lenovo_ble_crc);
 	return TRUE;
 }
 

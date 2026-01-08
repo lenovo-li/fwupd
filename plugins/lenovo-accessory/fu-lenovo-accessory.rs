@@ -57,13 +57,6 @@ struct FuLenovoHidData{
 
 #[derive(New,Validate,Parse,Default)]
 #[repr(C,packed)]
-struct FuLenovoBleData{
-    cmd:FuLenovoAccessoryCmd,
-    data: [u8; 58],
-}
-
-#[derive(New,Validate,Parse,Default)]
-#[repr(C,packed)]
 struct FuLenovoHidDfuFw{
     reportid:u8,
     cmd:FuLenovoAccessoryCmd,
@@ -75,9 +68,123 @@ struct FuLenovoHidDfuFw{
 
 #[derive(New,Validate,Parse,Default)]
 #[repr(C,packed)]
+struct FuLenovoHidDfuExit{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    exit_code: u8,
+    reserved: [u8; 57],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoHidAttribute{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    major_ver: u8,
+    minor_ver: u8,
+    product_pid: u16be,
+    processor_id: u8,
+    app_max_size: u32be,
+    page_size: u32be,
+    reserved: [u8; 45],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoHidDfuPrepare{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    file_type: u8,
+    start_address: u32be,
+    end_address: u32be,
+    crc32: u32be,
+    reserved: [u8; 45],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoHidDevicemode{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    mode: u8,
+    reserved: [u8; 57],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoHidFwVersion{
+    reportid:u8,
+    cmd:FuLenovoAccessoryCmd,
+    major: u8,
+    minor: u8,
+    internal: u8,
+    reserved: [u8; 55],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleData{
+    cmd:FuLenovoAccessoryCmd,
+    data: [u8; 58],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
 struct FuLenovoBleDfuFw{
     cmd:FuLenovoAccessoryCmd,
     file_type: u8,
     offset_address:u32be,
     data: [u8; 32],
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDfuExit{
+    cmd:FuLenovoAccessoryCmd,
+    exit_code: u8,
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDfuAttribute{
+    cmd:FuLenovoAccessoryCmd,
+    major_ver: u8,
+    minor_ver: u8,
+    product_pid: u16be,
+    processor_id: u8,
+    app_max_size: u32be,
+    page_size: u32be,
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDfuPrepare{
+    cmd:FuLenovoAccessoryCmd,
+    file_type: u8,
+    start_address: u32be,
+    end_address: u32be,
+    crc32: u32be,
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDfuCrc{
+    cmd:FuLenovoAccessoryCmd,
+    crc32: u32be,
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleDevicemode{
+    cmd:FuLenovoAccessoryCmd,
+    mode: u8,
+}
+
+#[derive(New,Validate,Parse,Default)]
+#[repr(C,packed)]
+struct FuLenovoBleFwVersion{
+    cmd:FuLenovoAccessoryCmd,
+    major: u8,
+    minor: u8,
+    internal: u8,
 }
