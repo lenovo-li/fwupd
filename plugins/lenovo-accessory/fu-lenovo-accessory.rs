@@ -63,7 +63,7 @@ struct FuLenovoHidDfuFw{
     file_type: u8,
     offset_address:u32be,
     data: [u8; 32],
-    reserved: [u8; 16],
+    reserved: [u8; 21],
 }
 
 #[derive(New,Validate,Parse,Default)]
@@ -77,7 +77,7 @@ struct FuLenovoHidDfuExit{
 
 #[derive(New,Validate,Parse,Default)]
 #[repr(C,packed)]
-struct FuLenovoHidAttribute{
+struct FuLenovoHidDfuAttribute{
     reportid:u8,
     cmd:FuLenovoAccessoryCmd,
     major_ver: u8,
