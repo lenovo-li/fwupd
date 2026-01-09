@@ -6,6 +6,7 @@
 
 #include "config.h"
 
+#include "fu-lenovo-accessory-firmware.h"
 #include "fu-lenovo-accessory-hid-command.h"
 #include "fu-lenovo-accessory-hid-device.h"
 
@@ -129,4 +130,5 @@ fu_lenovo_accessory_hid_device_init(FuLenovoAccessoryHidDevice *self)
 	fu_device_set_remove_delay(FU_DEVICE(self), FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_READ);
 	fu_udev_device_add_open_flag(FU_UDEV_DEVICE(self), FU_IO_CHANNEL_OPEN_FLAG_WRITE);
+	fu_device_set_firmware_gtype(FU_DEVICE(self), FU_TYPE_LENOVO_ACCESSORY_FIRMWARE);
 }

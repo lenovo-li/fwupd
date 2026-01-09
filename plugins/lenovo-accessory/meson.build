@@ -7,6 +7,7 @@ plugin_builtins += static_library('fu_plugin_lenovo_accessory',
   sources: [
     'fu-lenovo-accessory-ble-command.c',
     'fu-lenovo-accessory-ble-device.c',
+    'fu-lenovo-accessory-firmware.c',
     'fu-lenovo-accessory-hid-bootloader.c',
     'fu-lenovo-accessory-hid-command.c',
     'fu-lenovo-accessory-hid-device.c',
